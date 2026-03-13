@@ -1,0 +1,23 @@
+.next/
+node_modules/
+.DS_Store
+*.log
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+drizzle/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+
+# Windows reserved device names
+nul

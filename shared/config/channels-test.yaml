@@ -1,0 +1,22 @@
+# CoPaw WebChat Channel 配置 - 测试环境
+
+channels:
+  console:
+    enabled: false          # 测试环境禁用 Console
+  discord:
+    enabled: false          # 测试环境禁用 Discord
+  feishu:
+    enabled: false          # 测试环境禁用飞书
+  webchat:
+    enabled: true
+    websocket_host: "0.0.0.0"
+    websocket_port: 7080    # ✅ WebSocket 端口（与开发环境相同）
+    http_host: "0.0.0.0"
+    http_port: 7081         # ✅ HTTP API 端口（与开发环境相同）
+    users_base_dir: "/home/alex/Webchat-Dev/data/copaw-test/webchat-users"
+    heartbeat_interval: 30
+    cors_origins: ["*"]
+    bot_prefix: "[CoPaw] "
+    show_tool_details: true
+    filter_tool_messages: false
+    filter_thinking: false

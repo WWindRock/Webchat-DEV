@@ -1,0 +1,91 @@
+services:
+  # ============================================
+  # 开发环境 (Development)
+  # ============================================
+  
+  # CoPaw 后端服务（WebChat Channel）
+  copaw-dev:
+    build:
+      context: ./CoPaw
+      dockerfile: Dockerfile.dev
+    container_name: copaw-dev
+    ports:
+      - "7088:7088"    # ✅ CoPaw 后端 API 端口
+      - "7080:7080"    # ✅ WebSocket 端口
+      - "7081:7081"    # ✅ HTTP API 端口
+    volumes:
+      - ./data/copaw-dev:/root/.copaw
+    environment:
+      - COPAW_WORKING_DIR=/root/.copaw
+      - COPAW_LOG_LEVEL=debug
+    networks:
+      - webchat-dev
+    command: ["python", "-m", "uvicorn", "copaw_webui:app", "--host", "0.0.0.0", "--port", "7088", "--reload"]
+
+  # Selgen 前端服务
+  selgen-dev:
+    build:
+      context: ./Selgen
+      dockerfile: Dockerfile.dev
+    container_name: selgen-dev
+    ports:
+      - "7000:7000"    # ✅ Selgen 前端端口
+    volumes:
+      - ./Selgen:/app
+      - /app/node_modules
+      - ./data/selgen-data:/app/data
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_COPAW_WS_URL=ws://localhost:7080/ws    # ✅ 连接到 CoPaw WebSocket
+      - NEXT_PUBLIC_COPAW_HTTP_URL=http://localhost:7081   # ✅ 连接到 CoPaw HTTP API
+      - DATABASE_URL=file:./data/selgen.db
+    networks:
+      - webchat-dev
+    command: ["npm", "run", "dev"]
+
+  # ============================================
+  # 测试环境 (Testing) - 可选
+  # ============================================
+  
+  # CoPaw 后端服务
+  copaw-test:
+    build:
+      context: ./CoPaw
+      dockerfile: Dockerfile
+    container_name: copaw-test
+    ports:
+      - "7088:7088"    # ✅ CoPaw 后端 API 端口（与开发环境相同）
+      - "7080:7080"    # ✅ WebSocket 端口（与开发环境相同）
+      - "7081:7081"    # ✅ HTTP API 端口（与开发环境相同）
+    volumes:
+      - ./data/copaw-test:/root/.copaw
+    environment:
+      - COPAW_WORKING_DIR=/root/.copaw
+      - COPAW_LOG_LEVEL=info
+    networks:
+      - webchat-test
+    command: ["python", "-m", "uvicorn", "copaw.cli.main:app", "--host", "0.0.0.0", "--port", "7088"]
+    profiles: ["test"]  # 默认不启动，使用 --profile test 启动
+
+  # Selgen 前端服务
+  selgen-test:
+    build:
+      context: ./Selgen
+      dockerfile: Dockerfile
+    container_name: selgen-test
+    ports:
+      - "7001:7000"    # ✅ Selgen 测试前端端口
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_COPAW_WS_URL=ws://localhost:7080/ws    # ✅ 连接到 CoPaw WebSocket
+      - NEXT_PUBLIC_COPAW_HTTP_URL=http://localhost:7081  # ✅ 连接到 CoPaw HTTP API
+      - DATABASE_URL=file:./data/selgen-test.db
+    networks:
+      - webchat-test
+    profiles: ["test"]
+
+networks:
+  webchat-dev:
+    driver: bridge
+  webchat-test:
+    driver: bridge

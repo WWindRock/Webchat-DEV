@@ -1,0 +1,37 @@
+# CoPaw 开发环境 Dockerfile
+
+FROM python:3.11-slim
+
+# 安装编译工具
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    make \
+    && rm -rf /var/lib/apt/lists/*
+
+# 设置工作目录
+WORKDIR /app
+
+# 复制依赖文件
+COPY requirements.txt .
+
+# 安装 Python 依赖
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 复制 CoPaw WebUI 服务器
+COPY src/copaw_webui.py /app/src/
+
+# 复制 CoPaw Console 静态文件
+COPY console/ /app/console/
+
+# 暴露端口
+EXPOSE 7088 7080 7081
+
+# 使用 uvicorn 启动 Mock API（开发模式，支持热重载）
+CMD ["python", "-m", "uvicorn", "copaw_webui:app", "--host", "0.0.0.0", "--port", "7088", "--reload"]
+
+# 环境变量
+ENV PYTHONUNBUFFERED=1
+ENV COPAW_WORKING_DIR=/root/.copaw
+ENV COPAW_LOG_LEVEL=debug
+ENV PYTHONPATH=/app/src

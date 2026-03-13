@@ -1,0 +1,80 @@
+Traceback (most recent call last):
+  File "/home/alex/CoPaw/src/copaw/cli/main.py", line 35, in <module>
+    from ..config.utils import read_last_api  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: attempted relative import with no known parent package
+Traceback (most recent call last):
+  File "/home/alex/CoPaw/src/copaw/cli/main.py", line 35, in <module>
+    from ..config.utils import read_last_api  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: attempted relative import with no known parent package
+Traceback (most recent call last):
+  File "/home/alex/CoPaw/src/copaw/cli/main.py", line 35, in <module>
+    from ..config.utils import read_last_api  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: attempted relative import with no known parent package
+Traceback (most recent call last):
+  File "/home/alex/CoPaw/src/copaw/cli/main.py", line 35, in <module>
+    from ..config.utils import read_last_api  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: attempted relative import with no known parent package
+Traceback (most recent call last):
+  File "/home/alex/CoPaw/src/copaw/cli/main.py", line 35, in <module>
+    from ..config.utils import read_last_api  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: attempted relative import with no known parent package
+Traceback (most recent call last):
+  File "/home/alex/CoPaw/src/copaw/cli/main.py", line 35, in <module>
+    from ..config.utils import read_last_api  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: attempted relative import with no known parent package
+Traceback (most recent call last):
+  File "/home/alex/CoPaw/src/copaw/cli/main.py", line 35, in <module>
+    from ..config.utils import read_last_api  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: attempted relative import with no known parent package
+Traceback (most recent call last):
+  File "/home/alex/CoPaw/src/copaw/cli/main.py", line 35, in <module>
+    from ..config.utils import read_last_api  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: attempted relative import with no known parent package
+Traceback (most recent call last):
+  File "/home/alex/CoPaw/src/copaw/cli/main.py", line 35, in <module>
+    from ..config.utils import read_last_api  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: attempted relative import with no known parent package
+Traceback (most recent call last):
+  File "/home/alex/CoPaw/src/copaw/cli/main.py", line 35, in <module>
+    from ..config.utils import read_last_api  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: attempted relative import with no known parent package
+Traceback (most recent call last):
+  File "/home/alex/CoPaw/src/copaw/cli/main.py", line 35, in <module>
+    from ..config.utils import read_last_api  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: attempted relative import with no known parent package
+Traceback (most recent call last):
+  File "/home/alex/CoPaw/src/copaw/cli/main.py", line 35, in <module>
+    from ..config.utils import read_last_api  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: attempted relative import with no known parent package
+Traceback (most recent call last):
+  File "/home/alex/CoPaw/src/copaw/cli/main.py", line 35, in <module>
+    from ..config.utils import read_last_api  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: attempted relative import with no known parent package
+Traceback (most recent call last):
+  File "/home/alex/CoPaw/src/copaw/cli/main.py", line 35, in <module>
+    from ..config.utils import read_last_api  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: attempted relative import with no known parent package
+Traceback (most recent call last):
+  File "/home/alex/CoPaw/src/copaw/cli/main.py", line 35, in <module>
+    from ..config.utils import read_last_api  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: attempted relative import with no known parent package
+Traceback (most recent call last):
+  File "/home/alex/CoPaw/src/copaw/cli/main.py", line 35, in <module>
+    from ..config.utils import read_last_api  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: attempted relative import with no known parent package
