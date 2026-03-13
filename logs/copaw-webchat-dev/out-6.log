@@ -167,3 +167,19 @@ INFO:     54.193.167.97:58168 - "GET /api/config/channels HTTP/1.1" 200 OK
 INFO:     54.193.167.97:58108 - "GET /api/config/channels/types HTTP/1.1" 200 OK
 INFO:     127.0.0.1:50928 - "GET /api/chats?user_id=default_user&channel=console HTTP/1.1" 200 OK
 INFO:     127.0.0.1:50938 - "POST /api/agent/process HTTP/1.1" 200 OK
+INFO:     54.193.167.97:49724 - "GET /channels HTTP/1.1" 200 OK
+INFO:     54.193.167.97:49724 - "GET /assets/index-DsilsWgl.js HTTP/1.1" 304 Not Modified
+INFO:     54.193.167.97:50188 - "GET /assets/index-C5Cb7OmL.css HTTP/1.1" 304 Not Modified
+INFO:     54.193.167.97:50188 - "GET /logo.png HTTP/1.1" 200 OK
+INFO:     54.193.167.97:49724 - "GET /api/version HTTP/1.1" 200 OK
+INFO:     54.193.167.97:50632 - "GET /api/config/channels/types HTTP/1.1" 200 OK
+INFO:     54.193.167.97:50634 - "GET /copaw-symbol.svg HTTP/1.1" 200 OK
+INFO:     54.193.167.97:50638 - "GET /api/config/channels HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50286 - "GET /api/chats?user_id=default_user&channel=console HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50290 - "POST /api/agent/process HTTP/1.1" 200 OK
+INFO:     54.193.167.97:37276 - "GET /channels HTTP/1.1" 200 OK
+INFO:     54.193.167.97:37276 - "GET /api/version HTTP/1.1" 200 OK
+INFO:     54.193.167.97:38000 - "GET /api/config/channels/types HTTP/1.1" 200 OK
+INFO:     54.193.167.97:38172 - "GET /api/config/channels HTTP/1.1" 200 OK
+INFO:     54.193.167.97:38008 - "GET /api/config/channels/types HTTP/1.1" 200 OK
+INFO:     54.193.167.97:38172 - "GET /api/chats HTTP/1.1" 200 OK

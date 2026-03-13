@@ -28,7 +28,9 @@ import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import NextImage from 'next/image'
 import { useTOSUpload } from '@/hooks/useTOSUpload'
-import { ChatHistoryList } from './ChatHistoryList'
+import { useChatSync } from '@/hooks/useChatSync'
+import { LeftSidebar, SidebarTab, ChatSession } from '@/components/sidebar/LeftSidebar'
+import { LoginModal } from '@/components/auth/LoginModal'
 import { ReactFlowCanvas, CanvasItemData } from './ReactFlowCanvas'
 import { ReactFlowProvider, useReactFlow, useNodesState, useEdgesState, useViewport } from '@xyflow/react'
 import type { Node, Edge } from '@xyflow/react'
@@ -121,6 +123,10 @@ interface AgentCanvasProps {
   chatProcessing?: boolean
   currentSessionId?: string
   onSessionChange?: (sessionId: string) => void
+  isAuthenticated?: boolean
+  currentUser?: { username: string; avatar?: string } | null
+  onLogin?: (username: string, password: string) => boolean
+  onLogout?: () => void
 }
 
 type SelectedSkill = { skill: Skill; detail?: SkillDetail } | null
@@ -142,10 +148,19 @@ function AgentCanvasContent({
   onChatSend,
   chatProcessing = false,
   currentSessionId = 'default',
-  onSessionChange
+  onSessionChange,
+  isAuthenticated = true,
+  currentUser,
+  onLogin,
+  onLogout
 }: AgentCanvasProps) {
-  // State
-  const [activeTool, setActiveTool] = useState<string>('canvas') // 'canvas' | 'settings'
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('canvas')
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
+  const { sessions, refresh: refreshSessions, createSession, renameSession, deleteSession } = useChatSync()
+  const [localAuthError, setLocalAuthError] = useState('')
+  
+  const [activeTool, setActiveTool] = useState<string>('canvas')
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isChatOpen, setIsChatOpen] = useState(chatOpen)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
@@ -177,7 +192,53 @@ function AgentCanvasContent({
   const dragAttachmentIdRef = useRef<string | null>(null)
   const { uploadFile } = useTOSUpload()
 
-  // Sync prop changes
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setIsLoginModalOpen(true)
+    }
+  }, [isAuthenticated])
+
+  const handleLogin = (username: string, password: string): boolean => {
+    setLocalAuthError('')
+    if (onLogin) {
+      const success = onLogin(username, password)
+      if (success) {
+        setIsLoginModalOpen(false)
+        return true
+      } else {
+        setLocalAuthError('用户名或密码错误')
+        return false
+      }
+    }
+    return false
+  }
+
+  const handleNewChat = () => {
+    const newSession = sessions.length > 0 
+      ? createSession()
+      : { session_id: `session_${Date.now()}`, name: '新会话 1' } as ChatSession
+    if (onSessionChange) {
+      onSessionChange(newSession.session_id)
+    }
+    setActiveSidebarTab('canvas')
+    setIsHistoryOpen(false)
+    setIsChatOpen(true)
+  }
+
+  const handleLoginClick = () => {
+    setIsLoginModalOpen(true)
+  }
+
+  const handleRegister = (username: string, password: string): boolean => {
+    const existingUsers = JSON.parse(localStorage.getItem('selgen_users') || '[]')
+    if (existingUsers.some((u: any) => u.username === username)) {
+      return false
+    }
+    existingUsers.push({ username, password })
+    localStorage.setItem('selgen_users', JSON.stringify(existingUsers))
+    return true
+  }
+
   useEffect(() => {
     setIsChatOpen(chatOpen)
   }, [chatOpen])
@@ -239,16 +300,6 @@ function AgentCanvasContent({
   const handleChatHistorySelect = (chat: any) => {
       if (onSessionChange) {
           onSessionChange(chat.session_id)
-      }
-      setActiveTool('canvas')
-      setIsHistoryOpen(false)
-      setIsChatOpen(true)
-  }
-
-  const handleNewChat = () => {
-      const newId = `session_${Date.now()}`
-      if (onSessionChange) {
-          onSessionChange(newId)
       }
       setActiveTool('canvas')
       setIsHistoryOpen(false)
@@ -931,54 +982,46 @@ function AgentCanvasContent({
     : null
 
   return (
-    <div
-      className={cn("relative flex h-screen w-screen bg-[#0a0a0f] text-foreground overflow-hidden", className)}
-      onClick={() => setAttachmentContextMenu(null)}
-    >
-        {/* Main Canvas Area - Pass nodes and state down */}
-        <div className="absolute inset-0 z-0">
-            <ReactFlowCanvas 
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              setNodes={setNodes}
-              onAttachmentContextMenu={handleAttachmentContextMenu}
-            />
-        </div>
+    <div className="flex h-screen w-screen overflow-hidden">
+      <LeftSidebar
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        activeTab={activeSidebarTab}
+        onTabChange={setActiveSidebarTab}
+        currentUser={currentUser}
+        onLogout={onLogout}
+        onLoginClick={handleLoginClick}
+        sessions={sessions}
+        currentSessionId={currentSessionId}
+        onSelectSession={(session) => {
+          if (onSessionChange) {
+            onSessionChange(session.session_id)
+          }
+          setActiveSidebarTab('canvas')
+          setIsChatOpen(true)
+        }}
+        onNewSession={handleNewChat}
+        onRenameSession={(session, newName) => {
+          renameSession(session.session_id, newName)
+        }}
+        onDeleteSession={(sessionId) => {
+          deleteSession(sessionId)
+        }}
+      />
+      <div
+        className={cn("relative flex-1 h-full bg-[#0a0a0f] text-foreground overflow-hidden", className)}
+        onClick={() => setAttachmentContextMenu(null)}
+      >
+        <ReactFlowCanvas 
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          setNodes={setNodes}
+          onAttachmentContextMenu={handleAttachmentContextMenu}
+        />
 
-        {/* Floating Logo - Top Left */}
         <div className="absolute top-4 left-4 z-50">
-          <Link href="/" className="w-10 h-10 rounded-xl bg-[#141419]/90 backdrop-blur-sm border border-white/10 shadow-lg flex items-center justify-center hover:bg-[#1a1a1f] transition-colors">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5 text-white" />
-            </div>
-          </Link>
-        </div>
-
-        {/* Floating Left Toolbar - Center Vertically */}
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 z-50">
-          <div className="flex flex-col items-center gap-1 px-2 py-3 rounded-2xl bg-[#141419]/90 backdrop-blur-sm border border-white/10 shadow-lg relative">
-            {toolbarItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveTool(item.id === activeTool ? 'canvas' : item.id)}
-                className={cn(
-                  'w-9 h-9 rounded-xl flex items-center justify-center transition-all',
-                  activeTool === item.id
-                    ? 'bg-primary/20 text-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
-                )}
-                title={item.label}
-              >
-                <item.icon className="w-4 h-4" />
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Floating Top Toolbar - Centered */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">
           <div className="flex items-center gap-1 px-3 py-2 rounded-full bg-[#141419]/90 backdrop-blur-sm border border-white/10 shadow-lg">
             <button onClick={() => zoomOut()} className="p-2 rounded-lg hover:bg-white/10 text-muted-foreground transition-colors" title="Zoom out">
               <ZoomOut className="w-4 h-4" />
@@ -1024,126 +1067,148 @@ function AgentCanvasContent({
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => setIsHistoryOpen(prev => !prev)}
-                      className="p-2 hover:bg-white/5 rounded-lg text-muted-foreground transition-colors"
-                      title="历史记录"
-                    >
-                      <History className="w-4 h-4" />
-                    </button>
-                    <button className="p-2 hover:bg-white/5 rounded-lg text-muted-foreground transition-colors">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setIsChatOpen(false)
-                        onChatClose?.()
-                      }}
-                      className="p-2 hover:bg-white/5 rounded-lg text-muted-foreground transition-colors"
-                    >
-                      <Minimize2 className="w-4 h-4" />
-                    </button>
-                  </div>
-               </div>
+                   <div className="flex items-center gap-1">
+                     <button className="p-2 hover:bg-white/5 rounded-lg text-muted-foreground transition-colors">
+                       <MoreHorizontal className="w-4 h-4" />
+                     </button>
+                     <button 
+                       onClick={() => {
+                         setIsChatOpen(false)
+                         onChatClose?.()
+                       }}
+                       className="p-2 hover:bg-white/5 rounded-lg text-muted-foreground transition-colors"
+                     >
+                       <Minimize2 className="w-4 h-4" />
+                     </button>
+                   </div>
+                </div>
 
-               <ChatHistoryList 
-                 isOpen={isHistoryOpen}
-                 onClose={() => setIsHistoryOpen(false)}
-                 onSelectChat={handleChatHistorySelect}
-                 onNewChat={handleNewChat}
-                 currentSessionId={currentSessionId}
-                 align="right"
-                 className="right-4"
-               />
-
-               {/* Chat Messages */}
-               <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
                   {chatMessages.map((msg, idx) => {
                     const { text, items } = parseMessageAttachments(msg.content || '')
+                    const isUser = msg.role === 'user'
                     return (
-                    <div
+                    <motion.div
                       key={msg.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2, delay: idx * 0.05 }}
                       className={cn(
-                        "flex gap-4 max-w-full",
-                        msg.role === 'user' ? "flex-row-reverse" : "flex-row"
+                        "flex gap-3",
+                        isUser ? "flex-row-reverse" : "flex-row"
                       )}
                     >
                       <div className={cn(
-                        "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                        msg.role === 'user' ? "bg-white/10" : "bg-primary/20"
+                        "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-lg",
+                        isUser 
+                          ? "bg-gradient-to-br from-violet-500 to-purple-600" 
+                          : "bg-gradient-to-br from-slate-700 to-slate-800 border border-white/10"
                       )}>
-                        {msg.role === 'user' ? <UserIcon className="w-4 h-4" /> : <Bot className="w-4 h-4 text-primary" />}
+                        {isUser ? (
+                          <UserIcon className="w-4 h-4 text-white" />
+                        ) : (
+                          <Bot className="w-4 h-4 text-purple-400" />
+                        )}
                       </div>
                       <div className={cn(
-                        "flex flex-col gap-1 min-w-0",
-                        msg.role === 'user' ? "items-end" : "items-start"
+                        "flex flex-col gap-1 max-w-[85%]",
+                        isUser ? "items-end" : "items-start"
                       )}>
-                        <div className={cn(
-                          "px-4 py-2.5 rounded-2xl text-sm leading-relaxed max-w-[85%] overflow-hidden break-words",
-                          msg.role === 'user' 
-                            ? "bg-primary text-primary-foreground rounded-tr-sm" 
-                            : "bg-white/5 border border-white/10 rounded-tl-sm"
-                        )}>
-                          {text && <p className="whitespace-pre-wrap break-words">{text}</p>}
-                          {items.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {items.map((att, index) => {
-                                const displayUrl = signedThumbs[att.url] || att.url
-                                return (
-                                <button
-                                  key={`${att.url}-${index}`}
-                                  onClick={() => {
-                                    if (att.kind === 'image' || att.kind === 'video') {
-                                      setModalPreview({ url: displayUrl, name: att.label, kind: att.kind })
-                                    }
-                                  }}
-                                  className="relative w-20 h-20 rounded-lg overflow-hidden bg-white/10"
-                                >
-                                  {att.kind === 'image' ? (
-                                    <NextImage
-                                      src={displayUrl}
-                                      alt={att.label}
-                                      width={80}
-                                      height={80}
-                                      className="w-20 h-20 object-cover"
-                                    />
-                                  ) : att.kind === 'video' ? (
-                                    <video
-                                      src={displayUrl}
-                                      className="w-20 h-20 object-cover"
-                                      muted
-                                      preload="metadata"
-                                    />
-                                  ) : (
-                                    <div className="w-20 h-20 flex items-center justify-center text-xs text-muted-foreground">
-                                      {att.label}
-                                    </div>
-                                  )}
-                                </button>
-                              )})}
-                            </div>
-                          )}
-                        </div>
-                        <span className="text-[10px] text-muted-foreground/50 px-1">
-                          {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                    </div>
-                  )})}
-                  {chatProcessing && (
-                    <div className="flex gap-4">
-                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                        <Bot className="w-4 h-4 text-primary" />
-                      </div>
-                      <div className="flex items-center gap-1 h-8">
-                        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="w-1.5 h-1.5 bg-primary/50 rounded-full" />
-                        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-1.5 h-1.5 bg-primary/50 rounded-full" />
-                        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-1.5 h-1.5 bg-primary/50 rounded-full" />
-                      </div>
-                    </div>
-                  )}
-               </div>
+                         <div className={cn(
+                           "relative px-4 py-3 text-sm leading-relaxed",
+                           isUser 
+                             ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-2xl rounded-tr-sm shadow-lg shadow-purple-500/20" 
+                             : "bg-[#1a1a1f] border border-white/10 text-foreground rounded-2xl rounded-tl-sm shadow-xl"
+                         )}>
+                           {text && (
+                             <p className="whitespace-pre-wrap" style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}>
+                               {text}
+                             </p>
+                           )}
+                           {msg.isLoading && !text && (
+                             <div className="flex items-center gap-1.5 py-1">
+                               <span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                               <span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                               <span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                             </div>
+                           )}
+                           {items.length > 0 && (
+                             <div className="mt-3 flex flex-wrap gap-2">
+                               {items.map((att, index) => {
+                                 const displayUrl = signedThumbs[att.url] || att.url
+                                 return (
+                                 <motion.button
+                                   key={`${att.url}-${index}`}
+                                   whileHover={{ scale: 1.05 }}
+                                   whileTap={{ scale: 0.95 }}
+                                   onClick={() => {
+                                     if (att.kind === 'image' || att.kind === 'video') {
+                                       setModalPreview({ url: displayUrl, name: att.label, kind: att.kind })
+                                     }
+                                   }}
+                                   className="relative w-20 h-20 rounded-xl overflow-hidden bg-[#0a0a0f] border border-white/10 shadow-lg group"
+                                 >
+                                   {att.kind === 'image' ? (
+                                     <NextImage
+                                       src={displayUrl}
+                                       alt={att.label}
+                                       width={80}
+                                       height={80}
+                                       className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
+                                     />
+                                   ) : att.kind === 'video' ? (
+                                     <video
+                                       src={displayUrl}
+                                       className="w-full h-full object-cover"
+                                       muted
+                                       preload="metadata"
+                                     />
+                                   ) : (
+                                     <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                                       {att.label}
+                                     </div>
+                                   )}
+                                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                 </motion.button>
+                               )})}
+                             </div>
+                           )}
+                         </div>
+                         <span className="text-[10px] text-muted-foreground/50 px-1">
+                           {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                         </span>
+                       </div>
+                     </motion.div>
+                   )})}
+                   {chatProcessing && !chatMessages.some(m => m.isLoading) && (
+                     <motion.div 
+                       initial={{ opacity: 0, y: 10 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       className="flex gap-3"
+                     >
+                       <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 border border-white/10 flex items-center justify-center shadow-lg">
+                         <Bot className="w-4 h-4 text-purple-400" />
+                       </div>
+                       <div className="flex items-center gap-1 px-4 py-3 bg-[#1a1a1f] border border-white/10 rounded-2xl rounded-tl-sm shadow-xl">
+                         <motion.div 
+                           animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} 
+                           transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }} 
+                           className="w-1.5 h-1.5 bg-purple-400 rounded-full" 
+                         />
+                         <motion.div 
+                           animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} 
+                           transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut", delay: 0.2 }} 
+                           className="w-1.5 h-1.5 bg-purple-400 rounded-full" 
+                         />
+                         <motion.div 
+                           animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} 
+                           transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut", delay: 0.4 }} 
+                           className="w-1.5 h-1.5 bg-purple-400 rounded-full" 
+                         />
+                       </div>
+                     </motion.div>
+                   )}
+                </div>
 
                {/* Chat Input Area */}
                <div className="p-4 bg-[#141419]/50 border-t border-white/10">
@@ -1435,20 +1500,29 @@ function AgentCanvasContent({
           )}
         </AnimatePresence>
 
-        {!isChatOpen && (
-          <button
-            onClick={() => {
-              setIsChatOpen(true)
-              onChatExpand?.()
-            }}
-            className="fixed right-4 top-1/2 -translate-y-1/2 z-40 px-3 py-2 rounded-full bg-[#141419]/90 border border-white/10 text-xs text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
-          >
-            展开聊天
-          </button>
-        )}
-    </div>
-  )
-}
+         {!isChatOpen && (
+           <button
+             onClick={() => {
+               setIsChatOpen(true)
+               onChatExpand?.()
+             }}
+             className="fixed right-4 top-1/2 -translate-y-1/2 z-40 px-3 py-2 rounded-full bg-[#141419]/90 border border-white/10 text-xs text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+           >
+             展开聊天
+           </button>
+         )}
+
+         <LoginModal
+           isOpen={isLoginModalOpen}
+           onClose={() => setIsLoginModalOpen(false)}
+           onLogin={handleLogin}
+           onRegister={handleRegister}
+           error={localAuthError}
+         />
+       </div>
+     </div>
+   )
+ }
 
 function UserIcon({ className }: { className?: string }) {
   return (

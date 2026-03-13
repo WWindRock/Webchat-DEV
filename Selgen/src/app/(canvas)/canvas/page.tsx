@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { AgentCanvas } from '@/components/canvas/AgentCanvas'
-import { QueueSidebar } from '@/components/queue/QueueSidebar'
 
 interface Message {
   id: string
@@ -13,30 +12,57 @@ interface Message {
   isLoading?: boolean
 }
 
-const MOCK_TASKS: any[] = [
-  {
-    id: '1',
-    name: '暂无任务',
-    status: 'pending' as const,
-    progress: 0,
-    agentType: '',
-    createdAt: new Date(),
-  },
+const TEST_ACCOUNTS = [
+  { username: 'admin', password: 'admin123', role: '管理员' },
+  { username: 'user1', password: 'user123', role: '普通用户' },
+  { username: 'user2', password: 'user456', role: '普通用户' },
+  { username: 'demo', password: 'demo123', role: '演示用户' },
 ]
 
 export default function CanvasPage() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [currentUser, setCurrentUser] = useState<{ username: string } | null>(null)
   const [showChat, setShowChat] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [sessionId, setSessionId] = useState<string>('default')
-  // 只有存在需要展示的任务时才显示队列侧边栏
-  const showQueue = true
   const searchParams = useSearchParams()
   const initialInput = searchParams.get('input')
   const initialSession = searchParams.get('session')
   const hasAutoSent = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  const handleLogin = (username: string, password: string): boolean => {
+    const account = TEST_ACCOUNTS.find(a => a.username === username && a.password === password)
+    if (account) {
+      setCurrentUser({ username: account.username })
+      setIsAuthenticated(true)
+      localStorage.setItem('selgen_user', JSON.stringify({ username: account.username }))
+      return true
+    }
+    return false
+  }
+
+  const handleLogout = () => {
+    setCurrentUser(null)
+    setIsAuthenticated(false)
+    setMessages([])
+    setSessionId('default')
+    localStorage.removeItem('selgen_user')
+  }
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem('selgen_user')
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser)
+        setCurrentUser(user)
+        setIsAuthenticated(true)
+      } catch {
+        localStorage.removeItem('selgen_user')
+      }
+    }
+  }, [])
 
   // 处理发送消息
   const handleSendMessage = useCallback(async (content: string) => {
@@ -216,7 +242,6 @@ export default function CanvasPage() {
 
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-[#0a0a0f]">
-      {/* 画布主体 */}
       <AgentCanvas 
         onSendMessage={handleCanvasMessage}
         chatOpen={showChat}
@@ -227,15 +252,11 @@ export default function CanvasPage() {
         chatProcessing={isProcessing}
         currentSessionId={sessionId}
         onSessionChange={handleSessionChange}
+        isAuthenticated={isAuthenticated}
+        currentUser={currentUser}
+        onLogin={handleLogin}
+        onLogout={handleLogout}
       />
-
-      {/* 右侧队列侧边栏（仅在有需要的任务时显示） */}
-      {showQueue && (
-        <QueueSidebar 
-          tasks={MOCK_TASKS}
-          className={sidebarCollapsed ? 'w-12' : ''}
-        />
-      )}
     </div>
   )
 }
