@@ -175,44 +175,70 @@ export default function CanvasPage() {
         if (data.messages && Array.isArray(data.messages)) {
           const uiMessages = data.messages.map((m: any) => {
             let content = ''
+            
+            // Helper function to safely convert any value to string
+            const safeToString = (val: any): string => {
+              if (val === null || val === undefined) return ''
+              if (typeof val === 'string') return val
+              if (typeof val === 'object') {
+                // Try to extract text content from object
+                if (val.text) return String(val.text)
+                if (val.content) {
+                  if (typeof val.content === 'string') return val.content
+                  if (val.content.text) return String(val.content.text)
+                }
+                // Handle array of content parts
+                if (Array.isArray(val)) {
+                  return val.map((item: any) => {
+                    if (typeof item === 'string') return item
+                    if (item && typeof item === 'object') {
+                      return item.text || item.content || safeToString(item)
+                    }
+                    return String(item || '')
+                  }).filter(Boolean).join(' ')
+                }
+                // Try JSON stringify, fallback to empty string
+                try {
+                  const json = JSON.stringify(val)
+                  if (json !== '{}' && json !== '[]') return json
+                } catch {
+                  // Ignore JSON errors
+                }
+              }
+              return String(val || '')
+            }
+            
+            // Process content
             if (typeof m.content === 'string') {
               content = m.content
-              if (content === '[object Object]' && m.metadata?.content) {
-                const metaContent = m.metadata.content
-                if (typeof metaContent === 'string') {
-                  content = metaContent
-                } else if (metaContent && typeof metaContent === 'object') {
-                  if (metaContent.text) {
-                    content = String(metaContent.text)
-                  } else {
-                    try {
-                      content = JSON.stringify(metaContent)
-                    } catch {
-                      content = String(metaContent)
-                    }
-                  }
+              // Handle case where backend stored [object Object] as string
+              if (content === '[object Object]' || content === '[object][object]') {
+                if (m.metadata?.content) {
+                  content = safeToString(m.metadata.content)
+                } else if (m.metadata?.text) {
+                  content = String(m.metadata.text)
+                } else {
+                  content = ''
                 }
               }
             } else if (m.content && typeof m.content === 'object') {
-              if (m.content.text) {
-                content = String(m.content.text)
-              } else if (Array.isArray(m.content)) {
-                content = m.content.map((item: any) => {
-                  if (typeof item === 'string') return item
-                  if (item && typeof item === 'object' && item.text) return String(item.text)
-                  if (item && typeof item === 'object' && item.type === 'text') return String(item.text || '')
-                  return String(item || '')
-                }).join(' ')
-              } else {
-                try {
-                  content = JSON.stringify(m.content)
-                } catch {
-                  content = String(m.content)
-                }
-              }
+              content = safeToString(m.content)
             } else {
-              content = String(m.content || '')
+              content = safeToString(m.content)
             }
+            
+            // Final safety check - ensure no [object Object] remains
+            if (content === '[object Object]' || content === '[object][object]' || content.includes('[object')) {
+              console.warn('Detected [object Object] in message content, trying metadata fallback:', m)
+              if (m.metadata?.content) {
+                content = safeToString(m.metadata.content)
+              } else if (m.metadata?.text) {
+                content = String(m.metadata.text)
+              } else {
+                content = ''
+              }
+            }
+            
             return {
               id: m.id || Math.random().toString(),
               role: m.role === 'user' ? 'user' : 'assistant',

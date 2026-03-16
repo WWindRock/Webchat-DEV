@@ -555,3 +555,23 @@ INFO CoPaw/src/copaw/app/runner/runner.py:81 | 2026-03-16 00:45:29 | Handle agen
 }
 WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 00:45:30 | No content loaded from working directory
 WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 00:45:33 | No content loaded from working directory
+INFO CoPaw/src/copaw/app/runner/runner.py:81 | 2026-03-16 01:35:51 | Handle agent query:
+{
+  "session_id": "session_1773624925212_g193rjanz",
+  "user_id": "admin",
+  "channel": "webchat",
+  "msgs_len": 1,
+  "msgs_str": "[Msg(id='msg_df436936-9ed9-4b51-97a1-74328720facb', name='user', content=[{'type': 'text', 'text': '帮我生成一幅海豚的卡通图片'}], role='user', metadata=None, timestamp='2026-03-16 01:35:51.615', invocation_id='None')]..."
+}
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 01:35:51 | No content loaded from working directory
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 01:35:54 | No content loaded from working directory
+INFO CoPaw/src/copaw/app/runner/runner.py:81 | 2026-03-16 03:42:11 | Handle agent query:
+{
+  "session_id": "session_1773624925212_g193rjanz",
+  "user_id": "admin",
+  "channel": "webchat",
+  "msgs_len": 1,
+  "msgs_str": "[Msg(id='msg_30c8f128-8d97-4fa5-ad31-4157ca0ec218', name='user', content=[{'type': 'text', 'text': '[图片 1](https://storage.bizyair.cn/outputs/1e9ba2eb-4487-4f23-a8c2-2db27e848d15_04b2d44be8473f8d30fa9259f77a1024_ComfyUI_a596dd7c_00001_.png)\\xa0分析这图片'}], role='user', metadata=None, timestamp='2026-03..."
+}
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 03:42:11 | No content loaded from working directory
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 03:42:15 | No content loaded from working directory

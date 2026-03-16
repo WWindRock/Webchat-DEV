@@ -80,7 +80,13 @@ export function ChatView({ messages, onClose, onSend, isProcessing }: ChatViewPr
                     <span className="text-[10px]">AI 正在思考...</span>
                   </div>
                 ) : (
-                  <p className="whitespace-pre-wrap">{message.content || '...'}</p>
+                  <p className="whitespace-pre-wrap">{
+                    typeof message.content === 'string' 
+                      ? message.content 
+                      : message.content && typeof message.content === 'object' 
+                        ? (message.content.text || JSON.stringify(message.content))
+                        : String(message.content || '')
+                  }</p>
                 )}
               </div>
 

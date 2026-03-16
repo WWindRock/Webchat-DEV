@@ -536,7 +536,6 @@ function AgentCanvasContent({
         kind: node.data.type as 'image' | 'video' | 'file',
         source: (node.data.source as string) || 'user',
       }))
-      .filter((att) => att.source !== 'agent')
   }, [nodes])
 
   const filteredAttachments = useMemo(() => {
@@ -819,9 +818,32 @@ function AgentCanvasContent({
     return 'file'
   }, [])
 
-  const parseMessageAttachments = useCallback((content: string) => {
+  const parseMessageAttachments = useCallback((content: any) => {
     // Ensure content is a string - handle cases where API returns objects
-    const contentStr = typeof content === 'string' ? content : String(content || '')
+    let contentStr: string
+    if (typeof content === 'string') {
+      contentStr = content
+    } else if (content && typeof content === 'object') {
+      // Handle object content - extract text or convert to JSON
+      if (content.text) {
+        contentStr = String(content.text)
+      } else if (content.content) {
+        contentStr = String(content.content)
+      } else if (Array.isArray(content) && content.length > 0) {
+        // Handle array of content parts
+        contentStr = content.map((item: any) => {
+          if (typeof item === 'string') return item
+          if (item && typeof item === 'object') {
+            return item.text || item.content || JSON.stringify(item)
+          }
+          return String(item || '')
+        }).join(' ')
+      } else {
+        contentStr = JSON.stringify(content)
+      }
+    } else {
+      contentStr = String(content || '')
+    }
     const items: { label: string; url: string; kind: 'image' | 'video' | 'file' }[] = []
     const regex = /\[(图片|视频|附件)\s*\d+\]\(((?:https?:\/\/|\/?api\/uploads\/)[^)]+)\)/g
     const normalizeUrl = (raw: string) => {
@@ -1447,9 +1469,12 @@ function AgentCanvasContent({
                                 <span className="text-xs text-muted-foreground truncate">{att.name}</span>
                               </button>
                             ))}
-                            {filteredAttachments.length === 0 && (
-                              <span className="text-xs text-muted-foreground py-1 text-center">No items found</span>
-                            )}
+                             {filteredAttachments.length === 0 && (
+                               <div className="flex flex-col items-center gap-2 py-4 text-center">
+                                 <span className="text-xs text-muted-foreground">画布上没有可选择的元素</span>
+                                 <span className="text-[10px] text-muted-foreground/50">请先上传图片或视频到画布</span>
+                               </div>
+                             )}
                           </div>
                         </div>
                      </div>
