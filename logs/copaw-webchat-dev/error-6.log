@@ -575,3 +575,111 @@ INFO CoPaw/src/copaw/app/runner/runner.py:81 | 2026-03-16 03:42:11 | Handle agen
 }
 WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 03:42:11 | No content loaded from working directory
 WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 03:42:15 | No content loaded from working directory
+INFO CoPaw/src/copaw/app/runner/runner.py:81 | 2026-03-16 04:08:04 | Handle agent query:
+{
+  "session_id": "session_1773624925212_g193rjanz",
+  "user_id": "admin",
+  "channel": "webchat",
+  "msgs_len": 1,
+  "msgs_str": "[Msg(id='msg_0849298f-6e44-441c-b9d8-2377442c8e7b', name='user', content=[{'type': 'text', 'text': '？'}], role='user', metadata=None, timestamp='2026-03-16 04:08:04.235', invocation_id='None')]..."
+}
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 04:08:04 | No content loaded from working directory
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 04:08:07 | No content loaded from working directory
+INFO CoPaw/src/copaw/agents/tools/browser_control.py:145 | 2026-03-16 04:13:41 | Browser idle for 1855s (limit 1800s), stopping to release resources
+[31mERROR[0m /home/alex/.local/lib/python3.12/site-packages/aiohttp/web_protocol.py:481 | 2026-03-16 04:47:16 | Error handling request from 162.142.125.221
+Traceback (most recent call last):
+  File "/home/alex/.local/lib/python3.12/site-packages/aiohttp/web_protocol.py", line 408, in data_received
+    messages, upgraded, tail = self._request_parser.feed_data(data)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "aiohttp/_http_parser.pyx", line 556, in aiohttp._http_parser.HttpParser.feed_data
+aiohttp.http_exceptions.BadHttpMessage: 400, message:
+  Pause on PRI/Upgrade:
+
+    b''
+      ^
+INFO CoPaw/src/copaw/app/runner/runner.py:81 | 2026-03-16 05:53:49 | Handle agent query:
+{
+  "session_id": "session_1773634135590_idqk0wf4l",
+  "user_id": "admin",
+  "channel": "webchat",
+  "msgs_len": 1,
+  "msgs_str": "[Msg(id='msg_419452eb-50dc-4fef-956e-8e34fb05b26e', name='user', content=[{'type': 'text', 'text': '分析这个图片的内容'}], role='user', metadata=None, timestamp='2026-03-16 05:53:49.481', invocation_id='None')]..."
+}
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 05:53:49 | No content loaded from working directory
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 05:53:53 | No content loaded from working directory
+INFO CoPaw/src/copaw/app/runner/runner.py:81 | 2026-03-16 05:54:41 | Handle agent query:
+{
+  "session_id": "session_1773634135590_idqk0wf4l",
+  "user_id": "admin",
+  "channel": "webchat",
+  "msgs_len": 1,
+  "msgs_str": "[Msg(id='msg_628dfa41-f4aa-432b-977d-e6eddebe3812', name='user', content=[{'type': 'text', 'text': '我的附件你没看到吗'}], role='user', metadata=None, timestamp='2026-03-16 05:54:41.397', invocation_id='None')]..."
+}
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 05:54:41 | No content loaded from working directory
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 05:54:43 | No content loaded from working directory
+INFO CoPaw/src/copaw/agents/tools/browser_control.py:145 | 2026-03-16 06:25:55 | Browser idle for 1853s (limit 1800s), stopping to release resources
+INFO CoPaw/src/copaw/app/runner/runner.py:81 | 2026-03-16 06:43:50 | Handle agent query:
+{
+  "session_id": "session_1773634135590_idqk0wf4l",
+  "user_id": "admin",
+  "channel": "webchat",
+  "msgs_len": 1,
+  "msgs_str": "[Msg(id='msg_ebaa8d93-cae0-4d26-ac23-5734cdeb888a', name='user', content=[{'type': 'text', 'text': '分析这张图片的内容'}], role='user', metadata=None, timestamp='2026-03-16 06:43:50.517', invocation_id='None')]..."
+}
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 06:43:50 | No content loaded from working directory
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 06:43:53 | No content loaded from working directory
+INFO CoPaw/src/copaw/app/runner/runner.py:168 | 2026-03-16 06:44:41 | query_handler: session_1773634135590_idqk0wf4l cancelled!
+[31mERROR[0m /home/alex/.local/lib/python3.12/site-packages/agentscope_runtime/engine/runner.py:342 | 2026-03-16 06:44:41 | {'code': 'AGENT_UNKNOWN_ERROR', 'message': 'Unknown agent error: RuntimeError: Task has been cancelled!'}: Traceback (most recent call last):
+  File "/home/alex/Webchat-Dev/CoPaw/src/copaw/app/runner/runner.py", line 161, in query_handler
+    async for msg, last in stream_printing_messages(
+  File "/home/alex/.local/lib/python3.12/site-packages/agentscope/pipeline/_functional.py", line 177, in stream_printing_messages
+    printing_msg = await queue.get()
+                   ^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/queues.py", line 158, in get
+    await getter
+asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/alex/.local/lib/python3.12/site-packages/agentscope_runtime/engine/runner.py", line 324, in stream_query
+    async for event in stream_adapter(
+  File "/home/alex/.local/lib/python3.12/site-packages/agentscope_runtime/adapters/agentscope/stream.py", line 58, in adapt_agentscope_message_stream
+    async for msg, last in source_stream:
+  File "/home/alex/.local/lib/python3.12/site-packages/agentscope_runtime/engine/runner.py", line 179, in _call_handler_streaming
+    async for item in result:
+  File "/home/alex/Webchat-Dev/CoPaw/src/copaw/app/runner/runner.py", line 171, in query_handler
+    raise RuntimeError("Task has been cancelled!") from exc
+RuntimeError: Task has been cancelled!
+
+INFO CoPaw/src/copaw/app/runner/runner.py:81 | 2026-03-16 06:45:08 | Handle agent query:
+{
+  "session_id": "session_1773643507017_81pe4l377",
+  "user_id": "admin",
+  "channel": "webchat",
+  "msgs_len": 1,
+  "msgs_str": "[Msg(id='msg_dfd039f5-46d7-4921-92eb-7020bc1bcd09', name='user', content=[{'type': 'text', 'text': '分析这张图片的内容'}], role='user', metadata=None, timestamp='2026-03-16 06:45:08.755', invocation_id='None')]..."
+}
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 06:45:08 | No content loaded from working directory
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 06:45:11 | No content loaded from working directory
+INFO CoPaw/src/copaw/app/runner/runner.py:81 | 2026-03-16 07:27:11 | Handle agent query:
+{
+  "session_id": "session_1773646029299_pjam1bz7q",
+  "user_id": "admin",
+  "channel": "webchat",
+  "msgs_len": 1,
+  "msgs_str": "[Msg(id='msg_6624f6f1-f12d-40c8-8897-b5ce38d5b25f', name='user', content=[{'type': 'image', 'source': {'type': 'url', 'url': 'http://107.172.137.173:7000/api/uploads/default_user/global/1773646020148__________18_.png?expires=1773647829543&sig=baf32e1f4c431ed32f74552e6edc659114d291feeef6b3cad9c9428bb..."
+}
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 07:27:11 | No content loaded from working directory
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 07:27:14 | No content loaded from working directory
+INFO CoPaw/src/copaw/app/runner/runner.py:81 | 2026-03-16 07:51:29 | Handle agent query:
+{
+  "session_id": "session_1773647471769_8oskhdhwu",
+  "user_id": "admin",
+  "channel": "webchat",
+  "msgs_len": 1,
+  "msgs_str": "[Msg(id='msg_44b459a5-8664-4495-b58f-291716428608', name='user', content=[{'type': 'image', 'source': {'type': 'url', 'url': 'http://107.172.137.173:7000/api/uploads/default_user/global/1773634146378__________7_.png?expires=1773649288479&sig=e77b0df4bb87308d8c8beaaa53c1694f7c1277de0993e663f681f19de0..."
+}
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 07:51:29 | No content loaded from working directory
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 07:51:33 | No content loaded from working directory
+INFO CoPaw/src/copaw/agents/tools/browser_control.py:145 | 2026-03-16 08:07:03 | Browser idle for 1844s (limit 1800s), stopping to release resources

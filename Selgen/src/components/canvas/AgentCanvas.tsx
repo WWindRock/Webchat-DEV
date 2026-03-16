@@ -355,32 +355,27 @@ function AgentCanvasContent({
   }, [chatOpen])
 
   useEffect(() => {
-    if (!currentSessionId) return
+    if (!currentSessionId) {
+      hasLoadedCanvasRef.current = true
+      return
+    }
     const raw = localStorage.getItem(`canvas_state_${currentSessionId}`)
     if (raw) {
       try {
         const data = JSON.parse(raw)
-        if (Array.isArray(data?.nodes)) {
+        if (Array.isArray(data?.nodes) && data.nodes.length > 0) {
           setNodes(data.nodes)
           const agentUrls = data.nodes
             .filter((n: any) => n?.data?.source === 'agent' && n?.data?.url)
             .map((n: any) => n.data.url as string)
           processedMediaRef.current = new Set(agentUrls)
-        } else {
-          setNodes([])
         }
         if (Array.isArray(data?.edges)) {
           setEdges(data.edges)
-        } else {
-          setEdges([])
         }
       } catch {
-        setNodes([])
-        setEdges([])
+        // Invalid data, keep current nodes
       }
-    } else {
-      setNodes([])
-      setEdges([])
     }
     hasLoadedCanvasRef.current = true
   }, [currentSessionId, setNodes, setEdges])
@@ -1019,12 +1014,15 @@ function AgentCanvasContent({
       el.childNodes.forEach((node) => {
         if (node.nodeType === Node.TEXT_NODE) {
           composed += node.textContent || ''
-        } else if (node instanceof HTMLElement && node.dataset.attachmentLabel) {
+        } else if (node instanceof HTMLElement && node.dataset.attachmentId) {
           const id = node.dataset.attachmentId || ''
           const att = selectedAttachments.find(a => a.id === id)
-          const rawUrl = att?.rawUrl || ''
-          const signedUrl = rawUrl ? (signedMap.get(rawUrl) || rawUrl) : ''
-          composed += `${node.dataset.attachmentLabel}${signedUrl ? `(${signedUrl})` : ''}`
+          if (att) {
+            const rawUrl = att.rawUrl || ''
+            const signedUrl = rawUrl ? (signedMap.get(rawUrl) || rawUrl) : ''
+            const label = labelForAttachment(att.kind || 'file', (selectedAttachments.findIndex(a => a.id === id) + 1) || 1)
+            composed += `${label}${signedUrl ? `(${signedUrl})` : ''}`
+          }
         } else if (node instanceof HTMLElement && node.dataset.skillLabel) {
           composed += node.dataset.skillLabel
         }
@@ -1670,18 +1668,24 @@ function AgentCanvasContent({
                       >
                         <Paperclip className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => void handleSend()}
-                        disabled={!inputValue.trim() && !selectedSkill && selectedAttachments.length === 0}
-                        className={cn(
-                          "p-1.5 rounded-lg transition-colors",
-                          (inputValue.trim() || selectedSkill || selectedAttachments.length > 0)
-                            ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                            : "bg-white/5 text-muted-foreground cursor-not-allowed"
-                        )}
-                      >
-                        <Send className="w-4 h-4" />
-                      </button>
+                       <button
+                         onClick={() => void handleSend()}
+                         disabled={chatProcessing || (!inputValue.trim() && !selectedSkill && selectedAttachments.length === 0)}
+                         className={cn(
+                           "p-1.5 rounded-lg transition-colors",
+                           chatProcessing
+                             ? "bg-white/10 text-primary cursor-not-allowed"
+                             : (inputValue.trim() || selectedSkill || selectedAttachments.length > 0)
+                               ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                               : "bg-white/5 text-muted-foreground cursor-not-allowed"
+                         )}
+                       >
+                         {chatProcessing ? (
+                           <div className="w-4 h-4 border border-primary/30 border-t-primary rounded-full animate-spin" />
+                         ) : (
+                           <Send className="w-4 h-4" />
+                         )}
+                       </button>
                     </div>
                  </div>
 

@@ -307,6 +307,49 @@ export default function CanvasPage() {
     setShowChat(true)
 
     try {
+      // Parse content to extract text and image URLs for multimodal input
+      const contentParts: any[] = []
+      let remainingContent = content
+      
+      // Extract image URLs from content like "[图片 1](url)" or "[视频 1](url)"
+      const attachmentRegex = /\[(图片|视频|附件)\s*\d+\]\((https?:\/\/[^)]+)\)/g
+      let match
+      let lastIndex = 0
+      
+      while ((match = attachmentRegex.exec(content)) !== null) {
+        // Add text before attachment
+        if (match.index > lastIndex) {
+          const textBefore = remainingContent.slice(lastIndex, match.index).trim()
+          if (textBefore) {
+            contentParts.push({ type: 'text', text: textBefore })
+          }
+        }
+        
+        // Add image/video attachment using agentscope ImageContent format
+        const url = match[2]
+        contentParts.push({
+          type: 'image',
+          image_url: url
+        })
+        
+        lastIndex = match.index + match[0].length
+      }
+      
+      // Add remaining text after last attachment
+      if (lastIndex < content.length) {
+        const textAfter = content.slice(lastIndex).trim()
+        if (textAfter) {
+          contentParts.push({ type: 'text', text: textAfter })
+        }
+      }
+      
+      // If no attachments found, just use the content as text
+      if (contentParts.length === 0) {
+        contentParts.push({ type: 'text', text: content })
+      }
+      
+      console.log('[Canvas] Sending multimodal content:', JSON.stringify(contentParts, null, 2))
+
       const response = await fetch(`${COPAW_BASE_URL}/api/agent/process`, {
         method: 'POST',
         headers: { 
@@ -315,7 +358,7 @@ export default function CanvasPage() {
         },
         credentials: 'include',
         body: JSON.stringify({ 
-          input: [{ role: 'user', content: [{ type: 'text', text: content }] }],
+          input: [{ role: 'user', content: contentParts }],
           session_id: currentSid,
           user_id: currentUser?.username || 'default_user',
           channel: 'webchat',
@@ -357,6 +400,27 @@ export default function CanvasPage() {
             
             if (data.object === 'content' && data.type === 'text' && data.delta) {
               currentContent += data.text || ''
+            } else if (data.object === 'tool_call') {
+              // Handle tool call event
+              const toolCall: ToolExecution = {
+                id: data.id || `tool_${Date.now()}`,
+                name: data.name || 'Unknown Tool',
+                status: 'running',
+                input: data.arguments || data.input,
+                startTime: new Date(),
+              }
+              tools.push(toolCall)
+            } else if (data.object === 'tool_output') {
+              // Handle tool output event
+              const toolIndex = tools.findIndex(t => t.id === data.call_id || t.name === data.name)
+              if (toolIndex >= 0) {
+                tools[toolIndex] = {
+                  ...tools[toolIndex],
+                  status: 'completed',
+                  output: data.output,
+                  endTime: new Date(),
+                }
+              }
             } else if (data.object === 'message' && data.status === 'completed') {
               if (data.type === 'reasoning') {
                 // Handle reasoning content if needed
