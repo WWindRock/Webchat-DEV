@@ -1,45 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { buildCopawContentParts, resolvePublicBaseUrl } from '@/lib/chatAttachments'
 
-export const runtime = 'nodejs' // Use Node.js runtime for streaming
+export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { message, sessionId } = body
-    const normalizedSessionId = sessionId || 'default'
+    const { message, sessionId, userId = 'default_user' } = body
+    const normalizedSessionId = sessionId || `session_${Date.now()}`
 
-    // Transform payload for CoPaw
     const base = resolvePublicBaseUrl(request.nextUrl.origin, request.headers)
     const copawPayload = {
       input: [{ role: 'user', content: buildCopawContentParts(message, base) }],
       session_id: normalizedSessionId,
-      user_id: 'default_user', 
-      channel: 'console',
+      user_id: userId,
+      channel: 'webchat',
       stream: true
-    }
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[agent][input]', JSON.stringify(copawPayload.input))
-      const mediaUrls: string[] = []
-      for (const part of copawPayload.input[0]?.content || []) {
-        if (part?.type === 'image' || part?.type === 'video' || part?.type === 'file') {
-          const url = part?.source?.url
-          if (typeof url === 'string') mediaUrls.push(url)
-        }
-      }
-      if (mediaUrls.length > 0) {
-        console.log('[agent][media_urls]', JSON.stringify(mediaUrls))
-      }
     }
 
     const copawPort = process.env.COPAW_PORT || '7088'
     const copawUrl = `http://127.0.0.1:${copawPort}/api/agent/process`
     const chatsUrl = `http://127.0.0.1:${copawPort}/api/chats`
 
+    // Sync chat with CoPaw
     try {
-      const listRes = await fetch(`${chatsUrl}?user_id=default_user&channel=console`, { cache: 'no-store' })
+      const listRes = await fetch(`${chatsUrl}?user_id=${userId}&channel=webchat`, { cache: 'no-store' })
       if (listRes.ok) {
         const chats = await listRes.json()
         const exists = Array.isArray(chats)
@@ -49,10 +36,10 @@ export async function PUT(request: NextRequest) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              name: normalizedSessionId,
+              name: message.slice(0, 30) || '新会话',
               session_id: normalizedSessionId,
-              user_id: 'default_user',
-              channel: 'console',
+              user_id: userId,
+              channel: 'webchat',
             }),
             cache: 'no-store',
           })
@@ -73,19 +60,17 @@ export async function PUT(request: NextRequest) {
     })
 
     if (!response.ok) {
-        const text = await response.text()
-        console.error('CoPaw API Error:', response.status, text)
-        return NextResponse.json({ 
-            content: `Error communicating with AI backend: ${response.status} ${response.statusText}`,
-            type: 'text'
-        }, { status: response.status }) 
+      const text = await response.text()
+      console.error('CoPaw API Error:', response.status, text)
+      return NextResponse.json({ 
+        content: `Error communicating with AI backend: ${response.status} ${response.statusText}`,
+        type: 'text'
+      }, { status: response.status }) 
     }
 
-    // Stream the response back
     const encoder = new TextEncoder()
     const decoder = new TextDecoder()
     
-    // Create a transform stream to parse SSE and extract content
     const transformStream = new TransformStream({
       async transform(chunk, controller) {
         const text = decoder.decode(chunk)
@@ -99,33 +84,9 @@ export async function PUT(request: NextRequest) {
               
               const data = JSON.parse(jsonStr)
               
-              // Handle CoPaw/AgentScope SSE format
-              
-              // If status is 'failed', send error
-              if (data.status === 'failed') {
-                 controller.enqueue(encoder.encode(`Error: ${data.error?.message || 'Unknown error'}`))
-                 continue
-              }
-
-              // Extract text content
-              let content = ''
-              if (data.delta && data.delta.content) {
-                 // If delta format
-                 content = data.delta.content
-              } else if (data.object === 'message' && data.status === 'completed') {
-                 // If completion format
-                 if (Array.isArray(data.content)) {
-                    content = data.content.map((p: any) => p.text || '').join('')
-                 } else if (typeof data.content === 'string') {
-                    content = data.content
-                 }
-              }
-
-              // If we have content, send it
-              // Note: CanvasPage expects raw text chunks
-              if (content) {
-                controller.enqueue(encoder.encode(content))
-              }
+              // Forward the full message data to client
+              // This includes tool calls, reasoning, and regular content
+              controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'))
             } catch (e) {
               // ignore parse error for incomplete lines
             }
@@ -134,7 +95,6 @@ export async function PUT(request: NextRequest) {
       }
     })
 
-    // Pipe the fetch response body through our transform
     const stream = response.body ? response.body.pipeThrough(transformStream) : null
     if (!stream) {
       return NextResponse.json({ error: 'Empty response body' }, { status: 502 })

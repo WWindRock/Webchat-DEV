@@ -20,8 +20,9 @@ export async function POST(request: NextRequest) {
       console.log('[chat][input]', JSON.stringify(copawPayload.input))
     }
 
-    const copawUrl = 'http://127.0.0.1:6413/api/agent/process'
-    const chatsUrl = 'http://127.0.0.1:6413/api/chats'
+    const copawPort = process.env.COPAW_PORT || '7088'
+    const copawUrl = `http://127.0.0.1:${copawPort}/api/agent/process`
+    const chatsUrl = `http://127.0.0.1:${copawPort}/api/chats`
 
     try {
       const listRes = await fetch(`${chatsUrl}?user_id=default&channel=console`, { cache: 'no-store' })

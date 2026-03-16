@@ -61,6 +61,51 @@ export function useChatSync(currentUser: { username: string } | null) {
     }
   }, [SESSIONS_LIST_KEY])
 
+  const syncWith7088 = useCallback(async () => {
+    if (userId !== 'admin') return
+    
+    try {
+      const response = await fetch('http://107.172.137.173:7088/api/sessions', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (Array.isArray(data)) {
+          const currentSessions = await loadSessionsFromStorage()
+          const sessionMap = new Map<string, ChatSession>()
+          
+          currentSessions.forEach((s: ChatSession) => {
+            sessionMap.set(s.session_id, s)
+          })
+          
+          data.forEach((s: ChatSession) => {
+            if (!sessionMap.has(s.session_id)) {
+              sessionMap.set(s.session_id, { ...s, userId: s.userId || 'unknown' })
+            } else {
+              const existing = sessionMap.get(s.session_id)!
+              if (new Date(s.updated_at) > new Date(existing.updated_at)) {
+                sessionMap.set(s.session_id, { ...s, userId: s.userId || 'unknown' })
+              }
+            }
+          })
+          
+          const merged = Array.from(sessionMap.values()).sort((a: ChatSession, b: ChatSession) => 
+            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+          )
+          
+          setSessions(merged)
+          saveSessionsToStorage(merged)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to sync with 7088:', err)
+    }
+  }, [userId, loadSessionsFromStorage, saveSessionsToStorage])
+
   const fetchSessions = useCallback(async () => {
     if (!currentUser) {
       setSessions([])
@@ -70,7 +115,7 @@ export function useChatSync(currentUser: { username: string } | null) {
     setIsLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/history', { cache: 'no-store' })
+      const res = await fetch('/api/history')
       if (res.ok) {
         const data = await res.json()
         const apiSessions = Array.isArray(data) ? data : []
@@ -105,6 +150,10 @@ export function useChatSync(currentUser: { username: string } | null) {
           lastUpdatedRef.current = latestUpdated
         }
       }
+      
+      if (userId === 'admin') {
+        await syncWith7088()
+      }
     } catch (err) {
       console.error('Failed to fetch chat sessions:', err)
       loadSessionsFromStorage()
@@ -112,7 +161,7 @@ export function useChatSync(currentUser: { username: string } | null) {
     } finally {
       setIsLoading(false)
     }
-  }, [currentUser, userId, loadSessionsFromStorage, saveSessionsToStorage])
+  }, [currentUser, userId, loadSessionsFromStorage, saveSessionsToStorage, syncWith7088])
 
   const createSession = useCallback((name?: string): ChatSession => {
     const now = new Date().toISOString()
@@ -143,37 +192,19 @@ export function useChatSync(currentUser: { username: string } | null) {
     saveSessionsToStorage(updatedSessions)
   }, [sessions, userId, saveSessionsToStorage])
 
-  const renameSession = useCallback(async (sessionId: string, newName: string) => {
-    try {
-      const res = await fetch(`/api/history/${sessionId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName })
-      })
-      if (res.ok) {
-        updateSession(sessionId, { name: newName })
-      }
-    } catch (err) {
-      console.error('Failed to rename session:', err)
-    }
+  const renameSession = useCallback((sessionId: string, newName: string) => {
+    updateSession(sessionId, { name: newName })
   }, [updateSession])
 
-  const deleteSession = useCallback(async (sessionId: string) => {
+  const deleteSession = useCallback((sessionId: string) => {
+    const updatedSessions = sessions.filter(s => s.session_id !== sessionId)
+    setSessions(updatedSessions)
+    saveSessionsToStorage(updatedSessions)
+    
     try {
-      const res = await fetch(`/api/history/${sessionId}`, { method: 'DELETE' })
-      if (res.ok) {
-        const updatedSessions = sessions.filter(s => s.session_id !== sessionId)
-        setSessions(updatedSessions)
-        saveSessionsToStorage(updatedSessions)
-        
-        try {
-          localStorage.removeItem(`${SESSION_DATA_PREFIX}${sessionId}`)
-        } catch (err) {
-          console.error('Failed to delete session data:', err)
-        }
-      }
+      localStorage.removeItem(`${SESSION_DATA_PREFIX}${sessionId}`)
     } catch (err) {
-      console.error('Failed to delete session:', err)
+      console.error('Failed to delete session data:', err)
     }
   }, [sessions, SESSION_DATA_PREFIX, saveSessionsToStorage])
 
@@ -209,6 +240,37 @@ export function useChatSync(currentUser: { username: string } | null) {
       console.error('Failed to save session data:', err)
     }
   }, [SESSION_DATA_PREFIX, userId, getSessionData, updateSession])
+
+  const getAllUsersSessions = useCallback((): { userId: string; sessions: ChatSession[] }[] => {
+    if (userId !== 'admin') return []
+    
+    const result: { userId: string; sessions: ChatSession[] }[] = []
+    const userSet = new Set<string>()
+    
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key?.startsWith('selgen_sessions_list_')) {
+        const uid = key.replace('selgen_sessions_list_', '')
+        userSet.add(uid)
+      }
+    }
+    
+    userSet.forEach(uid => {
+      try {
+        const stored = localStorage.getItem(`selgen_sessions_list_${uid}`)
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (Array.isArray(parsed)) {
+            result.push({ userId: uid, sessions: parsed })
+          }
+        }
+      } catch (err) {
+        console.error(`Failed to load sessions for user ${uid}:`, err)
+      }
+    })
+    
+    return result
+  }, [userId])
 
   useEffect(() => {
     if (currentUser) {
@@ -251,5 +313,6 @@ export function useChatSync(currentUser: { username: string } | null) {
     deleteSession,
     getSessionData,
     saveSessionData,
+    getAllUsersSessions,
   }
 }

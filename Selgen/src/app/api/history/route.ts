@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   try {
-    const copawUrl = 'http://127.0.0.1:6413/api/chats'
+    const copawPort = process.env.COPAW_PORT || '7088'
+    const copawUrl = `http://127.0.0.1:${copawPort}/api/chats`
     const response = await fetch(copawUrl)
     
     if (!response.ok) {

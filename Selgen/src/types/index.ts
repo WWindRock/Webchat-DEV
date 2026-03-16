@@ -13,6 +13,17 @@ export interface User {
   updatedAt: Date;
 }
 
+// 工具执行
+export interface ToolExecution {
+  id: string;
+  name: string;
+  status: 'running' | 'completed' | 'error';
+  input?: any;
+  output?: any;
+  startTime: Date;
+  endTime?: Date;
+}
+
 // 对话消息
 export interface Message {
   id: string;
@@ -22,6 +33,7 @@ export interface Message {
   metadata?: Record<string, any>;
   timestamp: Date;
   isLoading?: boolean;
+  tools?: ToolExecution[];
 }
 
 // 对话

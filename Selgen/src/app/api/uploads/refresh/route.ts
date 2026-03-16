@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { signUploadPath } from '@/lib/uploadSigning'
-import { resolvePublicBaseUrl } from '@/lib/chatAttachments'
+import { normalizeAttachmentUrl, resolvePublicBaseUrl } from '@/lib/chatAttachments'
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,18 +11,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Path is required' }, { status: 400 })
     }
 
-    // Extract the file path from the URL (remove query parameters)
-    const url = new URL(path, 'http://localhost')
-    const filePath = url.pathname
+    // Skip URLs that don't need refreshing (no expires parameter)
+    if (!path.includes('expires=') || !path.includes('/api/uploads/')) {
+      return NextResponse.json({ 
+        success: true, 
+        url: path,
+        expiresAt: null
+      })
+    }
 
-    // Only allow refreshing paths under /api/uploads/
+    const origin = request.nextUrl.origin
+    const publicBase = resolvePublicBaseUrl(origin, request.headers)
+    
+    const normalizedUrl = normalizeAttachmentUrl(path, publicBase)
+    
+    let filePath: string
+    try {
+      const parsed = normalizedUrl.startsWith('http') 
+        ? new URL(normalizedUrl) 
+        : new URL(normalizedUrl, origin)
+      filePath = parsed.pathname
+    } catch {
+      return NextResponse.json({ error: 'Invalid URL format' }, { status: 400 })
+    }
+
     if (!filePath.startsWith('/api/uploads/')) {
       return NextResponse.json({ error: 'Invalid path' }, { status: 400 })
     }
 
-    // Generate new signed URL
-    const base = resolvePublicBaseUrl(request.nextUrl.origin, request.headers)
-    const signed = signUploadPath(filePath, base)
+    const signed = signUploadPath(filePath, publicBase || origin)
 
     return NextResponse.json({
       success: true,
@@ -31,7 +48,6 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Refresh signature error:', error)
     return NextResponse.json({ error: 'Failed to refresh signature' }, { status: 500 })
   }
 }

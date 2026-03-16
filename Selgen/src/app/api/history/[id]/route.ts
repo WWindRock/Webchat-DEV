@@ -5,7 +5,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const copawBase = 'http://127.0.0.1:6413/api/chats'
+    const copawPort = process.env.COPAW_PORT || '7088'
+    const copawBase = `http://127.0.0.1:${copawPort}/api/chats`
     if (params.id === 'default') {
       const listRes = await fetch(copawBase, { cache: 'no-store' })
       if (!listRes.ok) {
@@ -27,8 +28,6 @@ export async function GET(
     const response = await fetch(copawUrl, { cache: 'no-store' })
     
     if (!response.ok) {
-        // If 404, try fetching messages directly if chat detail fails (depends on CoPaw API structure)
-        // But from previous curl, /api/chats/{id} returns full chat object including messages
         return NextResponse.json({ error: 'Chat not found' }, { status: 404 })
     }
 
@@ -47,11 +46,40 @@ export async function PATCH(
   try {
     const body = await request.json()
     const name = (body?.name as string) || ''
-    const copawUrl = `http://127.0.0.1:6413/api/chats/${params.id}`
+    const copawPort = process.env.COPAW_PORT || '7088'
+    const copawBase = `http://127.0.0.1:${copawPort}/api/chats`
+    
+    // First, try to find the chat by session_id
+    let chatId = params.id
+    const listRes = await fetch(copawBase, { cache: 'no-store' })
+    if (listRes.ok) {
+      const chats = await listRes.json()
+      const chat = chats.find((c: any) => c.session_id === params.id)
+      if (chat && chat.id) {
+        chatId = chat.id
+      }
+    }
+    
+    // Fetch existing chat spec
+    const getRes = await fetch(`${copawBase}/${chatId}`, { cache: 'no-store' })
+    if (!getRes.ok) {
+      return NextResponse.json({ error: 'Chat not found' }, { status: 404 })
+    }
+    
+    const existingChat = await getRes.json()
+    
+    // Update with new name while preserving all other fields
+    const updatedChat = {
+      ...existingChat,
+      name,
+      updated_at: new Date().toISOString()
+    }
+    
+    const copawUrl = `${copawBase}/${chatId}`
     const response = await fetch(copawUrl, {
-      method: 'PATCH',
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name })
+      body: JSON.stringify(updatedChat)
     })
     if (!response.ok) {
       return NextResponse.json({ error: 'Failed to rename chat' }, { status: response.status })
@@ -69,7 +97,21 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const copawUrl = `http://127.0.0.1:6413/api/chats/${params.id}`
+    const copawPort = process.env.COPAW_PORT || '7088'
+    const copawBase = `http://127.0.0.1:${copawPort}/api/chats`
+    
+    // First, try to find the chat by session_id
+    let chatId = params.id
+    const listRes = await fetch(copawBase, { cache: 'no-store' })
+    if (listRes.ok) {
+      const chats = await listRes.json()
+      const chat = chats.find((c: any) => c.session_id === params.id)
+      if (chat && chat.id) {
+        chatId = chat.id
+      }
+    }
+    
+    const copawUrl = `${copawBase}/${chatId}`
     const response = await fetch(copawUrl, { method: 'DELETE' })
     if (!response.ok) {
       return NextResponse.json({ error: 'Failed to delete chat' }, { status: response.status })

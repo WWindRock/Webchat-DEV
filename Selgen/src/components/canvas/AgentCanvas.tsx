@@ -23,6 +23,10 @@ import {
   Video,
   Code2,
   FileText,
+  ChevronDown,
+  ChevronRight,
+  Terminal,
+  Wrench,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -121,15 +125,109 @@ interface AgentCanvasProps {
   onChatExpand?: () => void
   onChatSend?: (message: string) => void
   chatProcessing?: boolean
+  isLoadingSession?: boolean
   currentSessionId?: string
+  currentSessionName?: string
   onSessionChange?: (sessionId: string) => void
+  onCreateNewSession?: () => void
+  sessions?: any[]
+  onRefreshSessions?: () => void
   isAuthenticated?: boolean
   currentUser?: { username: string; avatar?: string } | null
   onLogin?: (username: string, password: string) => boolean
   onLogout?: () => void
+  chatEndRef?: React.RefObject<HTMLDivElement>
 }
 
 type SelectedSkill = { skill: Skill; detail?: SkillDetail } | null
+
+interface ToolExecution {
+  id: string
+  name: string
+  status: 'running' | 'completed' | 'error'
+  input?: any
+  output?: any
+  startTime: Date
+  endTime?: Date
+}
+
+function ToolExecutions({ tools }: { tools: ToolExecution[] }) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  
+  if (!tools || tools.length === 0) return null
+  
+  return (
+    <div className="mt-2 space-y-1">
+      {tools.map((tool) => (
+        <div key={tool.id} className="bg-[#0a0a0f] border border-white/5 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setExpanded(prev => ({ ...prev, [tool.id]: !prev[tool.id] }))}
+            className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-white/5 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              {tool.status === 'running' ? (
+                <div className="w-3 h-3 border border-purple-400/30 border-t-purple-400 rounded-full animate-spin" />
+              ) : tool.status === 'completed' ? (
+                <div className="w-3 h-3 rounded-full bg-green-500/20 flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                </div>
+              ) : (
+                <div className="w-3 h-3 rounded-full bg-red-500/20 flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                </div>
+              )}
+              <span className="text-muted-foreground">
+                {tool.name}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 text-muted-foreground/50">
+              <span className="text-[10px]">
+                {tool.status === 'running' ? '执行中...' : tool.status === 'completed' ? '已完成' : '错误'}
+              </span>
+              {expanded[tool.id] ? (
+                <ChevronDown className="w-3 h-3" />
+              ) : (
+                <ChevronRight className="w-3 h-3" />
+              )}
+            </div>
+          </button>
+          
+          {expanded[tool.id] && (
+            <motion.div
+              initial={{ height: 0 }}
+              animate={{ height: 'auto' }}
+              exit={{ height: 0 }}
+              className="border-t border-white/5"
+            >
+              <div className="p-3 space-y-2">
+                {tool.input && (
+                  <div>
+                    <div className="text-[10px] text-muted-foreground/50 mb-1">输入</div>
+                    <pre className="text-[10px] text-muted-foreground bg-white/5 rounded p-2 overflow-x-auto">
+                      {JSON.stringify(tool.input, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                {tool.output && (
+                  <div>
+                    <div className="text-[10px] text-muted-foreground/50 mb-1">输出</div>
+                    <pre className="text-[10px] text-muted-foreground bg-white/5 rounded p-2 overflow-x-auto max-h-32 overflow-y-auto">
+                      {typeof tool.output === 'string' ? tool.output : JSON.stringify(tool.output, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                <div className="text-[10px] text-muted-foreground/30">
+                  {tool.startTime && new Date(tool.startTime).toLocaleTimeString()}
+                  {tool.endTime && ` - ${new Date(tool.endTime).toLocaleTimeString()}`}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
 
 // ============================================
 // Main Component
@@ -147,17 +245,24 @@ function AgentCanvasContent({
   onChatExpand,
   onChatSend,
   chatProcessing = false,
-  currentSessionId = 'default',
+  isLoadingSession = false,
+  currentSessionId = '',
+  currentSessionName = '新会话',
   onSessionChange,
+  onCreateNewSession,
+  sessions: externalSessions = [],
+  onRefreshSessions,
   isAuthenticated = true,
   currentUser,
   onLogin,
-  onLogout
+  onLogout,
+  chatEndRef
 }: AgentCanvasProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('canvas')
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
-  const { sessions, refresh: refreshSessions, createSession, renameSession, deleteSession } = useChatSync()
+  const { sessions: internalSessions, refresh: refreshSessions, renameSession, deleteSession } = useChatSync(currentUser)
+  const sessions = externalSessions.length > 0 ? externalSessions : internalSessions
   const [localAuthError, setLocalAuthError] = useState('')
   
   const [activeTool, setActiveTool] = useState<string>('canvas')
@@ -189,8 +294,15 @@ function AgentCanvasContent({
   const hasLoadedCanvasRef = useRef(false)
   
   const chatInputRef = useRef<HTMLDivElement>(null)
+  const chatMessagesRef = useRef<HTMLDivElement>(null)
   const dragAttachmentIdRef = useRef<string | null>(null)
   const { uploadFile } = useTOSUpload()
+
+  useEffect(() => {
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight
+    }
+  }, [chatMessages])
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -214,11 +326,10 @@ function AgentCanvasContent({
   }
 
   const handleNewChat = () => {
-    const newSession = sessions.length > 0 
-      ? createSession()
-      : { session_id: `session_${Date.now()}`, name: '新会话 1' } as ChatSession
-    if (onSessionChange) {
-      onSessionChange(newSession.session_id)
+    if (onCreateNewSession) {
+      onCreateNewSession()
+    } else if (onSessionChange) {
+      onSessionChange('new')
     }
     setActiveSidebarTab('canvas')
     setIsHistoryOpen(false)
@@ -709,6 +820,8 @@ function AgentCanvasContent({
   }, [])
 
   const parseMessageAttachments = useCallback((content: string) => {
+    // Ensure content is a string - handle cases where API returns objects
+    const contentStr = typeof content === 'string' ? content : String(content || '')
     const items: { label: string; url: string; kind: 'image' | 'video' | 'file' }[] = []
     const regex = /\[(图片|视频|附件)\s*\d+\]\(((?:https?:\/\/|\/?api\/uploads\/)[^)]+)\)/g
     const normalizeUrl = (raw: string) => {
@@ -724,13 +837,13 @@ function AgentCanvasContent({
       return raw
     }
     let match: RegExpExecArray | null
-    while ((match = regex.exec(content)) !== null) {
+    while ((match = regex.exec(contentStr)) !== null) {
       const label = match[1]
       const url = normalizeUrl(match[2])
       const kind = resolveAttachmentKind(url)
       items.push({ label, url, kind })
     }
-    const text = content
+    const text = contentStr
       .replace(regex, '')
       .replace(/(?:https?:\/\/\S+|\/?api\/uploads\/\S+)/g, '')
       .replace(/\s{2,}/g, ' ')
@@ -926,12 +1039,16 @@ function AgentCanvasContent({
 
     for (const msg of chatMessages) {
       if (msg.role !== 'assistant') continue
-      const matches = msg.content?.match(urlRegex) || []
+      // Ensure content is string before regex match
+      const contentStr = typeof msg.content === 'string' ? msg.content : String(msg.content || '')
+      const matches = contentStr.match(urlRegex) || []
       for (const rawUrl of matches) {
         const url = rawUrl.replace(/[)\]]+$/, '')
         if (processedMediaRef.current.has(url)) continue
         processedMediaRef.current.add(url)
         const type = extensionType(url)
+        // Only add media files (image, video, audio), skip regular files
+        if (type === 'file') continue
         const name = url.split('/').pop() || url
         mediaUrls.push({ url, type, name })
       }
@@ -939,8 +1056,38 @@ function AgentCanvasContent({
 
     if (mediaUrls.length === 0) return
 
-    setNodes((prev) => {
-      const existing = prev.filter(n => n.data.source === 'agent')
+    // Load actual image dimensions to maintain aspect ratio
+    const loadImageDimensions = (url: string): Promise<{ width: number; height: number; aspectRatio: number }> => {
+      return new Promise((resolve) => {
+        const img = new Image()
+        img.onload = () => {
+          resolve({ width: img.width, height: img.height, aspectRatio: img.width / img.height })
+        }
+        img.onerror = () => {
+          // Default to 16:9 if image fails to load
+          resolve({ width: 1920, height: 1080, aspectRatio: 16 / 9 })
+        }
+        img.src = url
+      })
+    }
+
+    const loadVideoDimensions = (url: string): Promise<{ width: number; height: number; aspectRatio: number }> => {
+      return new Promise((resolve) => {
+        const video = document.createElement('video')
+        video.onloadedmetadata = () => {
+          resolve({ width: video.videoWidth, height: video.videoHeight, aspectRatio: video.videoWidth / video.videoHeight })
+        }
+        video.onerror = () => {
+          resolve({ width: 1920, height: 1080, aspectRatio: 16 / 9 })
+        }
+        video.src = url
+        video.preload = 'metadata'
+      })
+    }
+
+    // Process media and create nodes with correct aspect ratios
+    const processMedia = async () => {
+      const existing = nodes.filter(n => n.data.source === 'agent')
       const baseIndex = existing.length
       const columnCount = 3
       const gapX = 340
@@ -948,29 +1095,50 @@ function AgentCanvasContent({
       const startX = 60
       const startY = 60
 
-      const newNodes: Node<CanvasItemData>[] = mediaUrls.map((item, idx) => {
+      const newNodes: Node<CanvasItemData>[] = []
+
+      for (let idx = 0; idx < mediaUrls.length; idx++) {
+        const item = mediaUrls[idx]
         const index = baseIndex + idx
         const col = index % columnCount
         const row = Math.floor(index / columnCount)
         const position = { x: startX + col * gapX, y: startY + row * gapY }
-        return {
+
+        // Get actual dimensions
+        let aspectRatio = 16 / 9
+        try {
+          if (item.type === 'image') {
+            const dims = await loadImageDimensions(item.url)
+            aspectRatio = dims.aspectRatio
+          } else if (item.type === 'video') {
+            const dims = await loadVideoDimensions(item.url)
+            aspectRatio = dims.aspectRatio
+          }
+        } catch (e) {
+          // Use default aspect ratio
+        }
+
+        newNodes.push({
           id: `chat_media_${Date.now()}_${index}`,
           type: item.type === 'image' || item.type === 'video' ? 'media' : 'file',
           position,
           data: {
             type: item.type,
             status: 'completed',
-            aspectRatio: item.type === 'image' || item.type === 'video' ? 16 / 9 : 1,
+            aspectRatio,
             name: item.name,
             url: item.url,
             rawUrl: item.url,
             source: 'agent',
           },
-        }
-      })
-      return [...prev, ...newNodes]
-    })
-  }, [chatMessages, setNodes])
+        })
+      }
+
+      setNodes((prev) => [...prev, ...newNodes])
+    }
+
+    processMedia()
+  }, [chatMessages])
 
   const toolbarItems = [
     { id: 'canvas', icon: MousePointer2, label: 'Select' },
@@ -997,7 +1165,6 @@ function AgentCanvasContent({
           if (onSessionChange) {
             onSessionChange(session.session_id)
           }
-          setActiveSidebarTab('canvas')
           setIsChatOpen(true)
         }}
         onNewSession={handleNewChat}
@@ -1081,9 +1248,19 @@ function AgentCanvasContent({
                        <Minimize2 className="w-4 h-4" />
                      </button>
                    </div>
-                </div>
+                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                 {isLoadingSession && (
+                   <div className="flex-1 flex items-center justify-center">
+                     <div className="flex flex-col items-center gap-3">
+                       <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+                       <span className="text-sm text-muted-foreground">加载会话中...</span>
+                     </div>
+                   </div>
+                 )}
+
+                 {!isLoadingSession && (
+                 <div ref={chatMessagesRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                   {chatMessages.map((msg, idx) => {
                     const { text, items } = parseMessageAttachments(msg.content || '')
                     const isUser = msg.role === 'user'
@@ -1132,48 +1309,51 @@ function AgentCanvasContent({
                                <span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                              </div>
                            )}
-                           {items.length > 0 && (
-                             <div className="mt-3 flex flex-wrap gap-2">
-                               {items.map((att, index) => {
-                                 const displayUrl = signedThumbs[att.url] || att.url
-                                 return (
-                                 <motion.button
-                                   key={`${att.url}-${index}`}
-                                   whileHover={{ scale: 1.05 }}
-                                   whileTap={{ scale: 0.95 }}
-                                   onClick={() => {
-                                     if (att.kind === 'image' || att.kind === 'video') {
-                                       setModalPreview({ url: displayUrl, name: att.label, kind: att.kind })
-                                     }
-                                   }}
-                                   className="relative w-20 h-20 rounded-xl overflow-hidden bg-[#0a0a0f] border border-white/10 shadow-lg group"
-                                 >
-                                   {att.kind === 'image' ? (
-                                     <NextImage
-                                       src={displayUrl}
-                                       alt={att.label}
-                                       width={80}
-                                       height={80}
-                                       className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
-                                     />
-                                   ) : att.kind === 'video' ? (
-                                     <video
-                                       src={displayUrl}
-                                       className="w-full h-full object-cover"
-                                       muted
-                                       preload="metadata"
-                                     />
-                                   ) : (
-                                     <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                                       {att.label}
-                                     </div>
-                                   )}
-                                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                 </motion.button>
-                               )})}
-                             </div>
-                           )}
-                         </div>
+                            {items.length > 0 && (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {items.map((att, index) => {
+                                  const displayUrl = signedThumbs[att.url] || att.url
+                                  return (
+                                  <motion.button
+                                    key={`${att.url}-${index}`}
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => {
+                                      if (att.kind === 'image' || att.kind === 'video') {
+                                        setModalPreview({ url: displayUrl, name: att.label, kind: att.kind })
+                                      }
+                                    }}
+                                    className="relative w-20 h-20 rounded-xl overflow-hidden bg-[#0a0a0f] border border-white/10 shadow-lg group"
+                                  >
+                                    {att.kind === 'image' ? (
+                                      <NextImage
+                                        src={displayUrl}
+                                        alt={att.label}
+                                        width={80}
+                                        height={80}
+                                        className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
+                                      />
+                                    ) : att.kind === 'video' ? (
+                                      <video
+                                        src={displayUrl}
+                                        className="w-full h-full object-cover"
+                                        muted
+                                        preload="metadata"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                                        {att.label}
+                                      </div>
+                                    )}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                  </motion.button>
+                                )})}
+                              </div>
+                            )}
+                            {!isUser && msg.tools && msg.tools.length > 0 && (
+                              <ToolExecutions tools={msg.tools} />
+                            )}
+                          </div>
                          <span className="text-[10px] text-muted-foreground/50 px-1">
                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                          </span>
@@ -1207,10 +1387,11 @@ function AgentCanvasContent({
                          />
                        </div>
                      </motion.div>
-                   )}
-                </div>
+                    )}
+                 </div>
+                 )}
 
-               {/* Chat Input Area */}
+                {/* Chat Input Area */}
                <div className="p-4 bg-[#141419]/50 border-t border-white/10">
                  {/* Popups for Skills/Attachments/Agents */}
                  <div className="relative">
@@ -1517,6 +1698,7 @@ function AgentCanvasContent({
            onClose={() => setIsLoginModalOpen(false)}
            onLogin={handleLogin}
            onRegister={handleRegister}
+           isAuthenticated={isAuthenticated}
            error={localAuthError}
          />
        </div>

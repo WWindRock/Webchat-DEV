@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Sparkles,
@@ -72,14 +72,36 @@ export function LeftSidebar({
 }: LeftSidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draftName, setDraftName] = useState('')
+  
+  const [settings, setSettings] = useState({
+    theme: 'dark',
+    language: 'zh-CN',
+    autoSave: true,
+    notifications: true,
+    compactMode: false,
+  })
+  
+  useEffect(() => {
+    const saved = localStorage.getItem('selgen_settings')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        setSettings(prev => ({ ...prev, ...parsed }))
+      } catch {}
+    }
+  }, [])
+  
+  const updateSetting = (key: string, value: any) => {
+    const updated = { ...settings, [key]: value }
+    setSettings(updated)
+    localStorage.setItem('selgen_settings', JSON.stringify(updated))
+  }
 
-  // 顶部工具按钮（主导航）
   const mainTools = [
     { id: 'canvas' as const, icon: MousePointer2, label: '画布', description: 'AI画布创作' },
     { id: 'history' as const, icon: History, label: '历史', description: '会话记录' },
   ]
 
-  // 底部工具按钮（次要导航）
   const bottomTools = [
     { id: 'settings' as const, icon: Settings, label: '设置', description: '系统设置' },
   ]
@@ -122,43 +144,33 @@ export function LeftSidebar({
     <motion.div
       initial={false}
       animate={{ width: isCollapsed ? 80 : 320 }}
-      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      style={{ willChange: "width" }}
       className={cn(
-        "h-full bg-[#0a0a0f]/95 backdrop-blur-xl border-r border-white/10 flex flex-col z-50",
+        "h-full bg-[#0a0a0f]/95 backdrop-blur-xl border-r border-white/10 flex flex-col z-50 shrink-0",
         className
       )}
     >
-      {/* LOGO区域 */}
-      <div className="flex items-center justify-between p-4 border-b border-white/10">
+      <div className="flex items-center justify-between p-4 border-b border-white/10 h-[73px]">
         <Link 
           href="/" 
           className={cn(
-            "flex items-center gap-3 transition-all duration-300",
+            "flex items-center gap-3 transition-opacity duration-200",
             isCollapsed ? "justify-center w-full" : ""
           )}
         >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-purple-500/20 shrink-0">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
-          <AnimatePresence mode="wait">
-            {!isCollapsed && (
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                className="flex flex-col"
-              >
-                <span className="font-bold text-lg text-white leading-tight">Selgen</span>
-                <span className="text-[10px] text-muted-foreground">AI创作平台</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <div className={cn("flex flex-col overflow-hidden", isCollapsed ? "hidden" : "block")}>
+            <span className="font-bold text-lg text-white leading-tight whitespace-nowrap">Selgen</span>
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap">AI创作平台</span>
+          </div>
         </Link>
       </div>
 
       {/* 主要内容区域 */}
-      <div className="flex-1 overflow-y-auto py-2">
-        {/* 主导航按钮 */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden py-2">
         <div className={cn(
           "flex flex-col gap-1 px-2",
           isCollapsed ? "items-center" : ""
@@ -168,7 +180,7 @@ export function LeftSidebar({
               key={item.id}
               onClick={() => onTabChange(activeTab === item.id ? 'canvas' : item.id)}
               className={cn(
-                "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative",
+                "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative shrink-0",
                 isCollapsed ? "justify-center w-12 h-12" : "w-full",
                 activeTab === item.id
                   ? "bg-gradient-to-r from-violet-500/20 to-purple-500/20 text-purple-400 border border-purple-500/30"
@@ -177,27 +189,17 @@ export function LeftSidebar({
               title={isCollapsed ? item.label : undefined}
             >
               <item.icon className={cn(
-                "w-5 h-5 transition-all duration-200",
+                "w-5 h-5 transition-transform duration-200 shrink-0",
                 activeTab === item.id ? "scale-110 text-purple-400" : "group-hover:scale-105"
               )} />
-              <AnimatePresence mode="wait">
-                {!isCollapsed && (
-                  <motion.div
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    className="flex flex-col items-start flex-1"
-                  >
-                    <span className="font-medium text-sm">{item.label}</span>
-                    <span className="text-[10px] text-muted-foreground">{item.description}</span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {!isCollapsed && (
+                <div className="flex flex-col items-start flex-1 min-w-0 overflow-hidden">
+                  <span className="font-medium text-sm truncate">{item.label}</span>
+                  <span className="text-[10px] text-muted-foreground truncate">{item.description}</span>
+                </div>
+              )}
               {activeTab === item.id && !isCollapsed && (
-                <motion.div
-                  layoutId="activeTabIndicator"
-                  className="absolute right-2 w-1.5 h-1.5 rounded-full bg-purple-400"
-                />
+                <div className="absolute right-2 w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0" />
               )}
             </button>
           ))}
@@ -347,28 +349,93 @@ export function LeftSidebar({
               transition={{ duration: 0.2 }}
               className="mt-4 px-3"
             >
-              <div className="bg-white/[0.02] rounded-xl border border-white/5 p-4">
+              <div className="bg-white/[0.02] rounded-xl border border-white/5 p-4 space-y-3">
                 <div className="flex items-center gap-2 mb-4">
                   <Settings className="w-4 h-4 text-purple-400" />
                   <span className="text-sm font-medium text-white">设置</span>
                 </div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/5">
-                    <span className="text-sm text-muted-foreground">主题模式</span>
-                    <span className="text-xs text-purple-400">暗黑</span>
-                  </div>
-                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/5">
-                    <span className="text-sm text-muted-foreground">语言</span>
-                    <span className="text-xs text-purple-400">简体中文</span>
-                  </div>
-                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/5">
-                    <span className="text-sm text-muted-foreground">自动保存</span>
-                    <span className="text-xs text-green-400">开启</span>
-                  </div>
+                
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/5">
+                  <span className="text-sm text-muted-foreground">主题模式</span>
+                  <button
+                    onClick={() => updateSetting('theme', settings.theme === 'dark' ? 'light' : 'dark')}
+                    className="px-2 py-1 rounded bg-purple-500/20 text-purple-400 text-xs font-medium hover:bg-purple-500/30 transition-colors"
+                  >
+                    {settings.theme === 'dark' ? '暗黑' : '明亮'}
+                  </button>
                 </div>
-                <p className="text-xs text-muted-foreground/60 mt-4 text-center">
-                  更多设置选项开发中...
-                </p>
+                
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/5">
+                  <span className="text-sm text-muted-foreground">语言</span>
+                  <select
+                    value={settings.language}
+                    onChange={(e) => updateSetting('language', e.target.value)}
+                    className="bg-purple-500/20 text-purple-400 text-xs rounded px-2 py-1 outline-none border-none cursor-pointer"
+                  >
+                    <option value="zh-CN">简体中文</option>
+                    <option value="en-US">English</option>
+                  </select>
+                </div>
+                
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/5">
+                  <span className="text-sm text-muted-foreground">自动保存</span>
+                  <button
+                    onClick={() => updateSetting('autoSave', !settings.autoSave)}
+                    className={cn(
+                      "w-10 h-5 rounded-full transition-colors relative",
+                      settings.autoSave ? "bg-green-500" : "bg-gray-600"
+                    )}
+                  >
+                    <span className={cn(
+                      "absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all",
+                      settings.autoSave ? "left-5" : "left-0.5"
+                    )} />
+                  </button>
+                </div>
+                
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/5">
+                  <span className="text-sm text-muted-foreground">通知</span>
+                  <button
+                    onClick={() => updateSetting('notifications', !settings.notifications)}
+                    className={cn(
+                      "w-10 h-5 rounded-full transition-colors relative",
+                      settings.notifications ? "bg-green-500" : "bg-gray-600"
+                    )}
+                  >
+                    <span className={cn(
+                      "absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all",
+                      settings.notifications ? "left-5" : "left-0.5"
+                    )} />
+                  </button>
+                </div>
+                
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/5">
+                  <span className="text-sm text-muted-foreground">紧凑模式</span>
+                  <button
+                    onClick={() => updateSetting('compactMode', !settings.compactMode)}
+                    className={cn(
+                      "w-10 h-5 rounded-full transition-colors relative",
+                      settings.compactMode ? "bg-green-500" : "bg-gray-600"
+                    )}
+                  >
+                    <span className={cn(
+                      "absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all",
+                      settings.compactMode ? "left-5" : "left-0.5"
+                    )} />
+                  </button>
+                </div>
+                
+                <div className="pt-3 border-t border-white/10">
+                  <button
+                    onClick={() => {
+                      localStorage.clear()
+                      window.location.reload()
+                    }}
+                    className="w-full py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
+                  >
+                    清除所有数据
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}

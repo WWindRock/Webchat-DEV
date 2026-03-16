@@ -4,12 +4,25 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { AgentCanvas } from '@/components/canvas/AgentCanvas'
 
-interface Message {
+export interface ToolExecution {
   id: string
-  role: 'user' | 'assistant'
+  name: string
+  status: 'running' | 'completed' | 'error'
+  input?: any
+  output?: any
+  startTime: Date
+  endTime?: Date
+}
+
+export interface Message {
+  id: string
+  role: 'user' | 'assistant' | 'system'
   content: string
   timestamp: Date
   isLoading?: boolean
+  tools?: ToolExecution[]
+  type?: 'text' | 'reasoning' | 'tool_call' | 'tool_output' | 'image' | 'audio'
+  metadata?: any
 }
 
 const TEST_ACCOUNTS = [
@@ -19,18 +32,56 @@ const TEST_ACCOUNTS = [
   { username: 'demo', password: 'demo123', role: '演示用户' },
 ]
 
+const COPAW_BASE_URL = 'http://107.172.137.173:7088'
+
 export default function CanvasPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [currentUser, setCurrentUser] = useState<{ username: string } | null>(null)
   const [showChat, setShowChat] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
-  const [sessionId, setSessionId] = useState<string>('default')
+  const [isLoadingSession, setIsLoadingSession] = useState(false)
+  const [sessionId, setSessionId] = useState<string>('')
+  const [sessionName, setSessionName] = useState<string>('新会话')
+  const [sessions, setSessions] = useState<any[]>([])
   const searchParams = useSearchParams()
   const initialInput = searchParams.get('input')
   const initialSession = searchParams.get('session')
   const hasAutoSent = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const chatEndRef = useRef<HTMLDivElement>(null)
+
+  const loadSessions = useCallback(async () => {
+    if (!currentUser) return
+    try {
+      const res = await fetch(`${COPAW_BASE_URL}/api/chats?user_id=${currentUser.username}&channel=webchat`, { 
+        cache: 'no-store',
+        credentials: 'include'
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data)) {
+          const sorted = data.sort((a: any, b: any) => 
+            new Date(b.updated_at || b.created_at || 0).getTime() - 
+            new Date(a.updated_at || a.created_at || 0).getTime()
+          )
+          setSessions(sorted)
+        } else {
+          setSessions([])
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load sessions:', e)
+      setSessions([])
+    }
+  }, [currentUser])
+
+  useEffect(() => {
+    if (!currentUser) return
+    loadSessions()
+    const interval = setInterval(loadSessions, 3000)
+    return () => clearInterval(interval)
+  }, [currentUser, loadSessions])
 
   const handleLogin = (username: string, password: string): boolean => {
     const account = TEST_ACCOUNTS.find(a => a.username === username && a.password === password)
@@ -47,7 +98,9 @@ export default function CanvasPage() {
     setCurrentUser(null)
     setIsAuthenticated(false)
     setMessages([])
-    setSessionId('default')
+    setSessionId('')
+    setSessionName('新会话')
+    setSessions([])
     localStorage.removeItem('selgen_user')
   }
 
@@ -64,26 +117,153 @@ export default function CanvasPage() {
     }
   }, [])
 
-  // 处理发送消息
+  const createNewSession = useCallback(async () => {
+    const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const newSessionName = `新会话 ${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
+    
+    try {
+      await fetch(`${COPAW_BASE_URL}/api/chats`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: newSessionName,
+          session_id: newSessionId,
+          user_id: currentUser?.username || 'default_user',
+          channel: 'webchat'
+        })
+      })
+    } catch (e) {
+      console.error('Failed to create session on server:', e)
+    }
+    
+    setSessionId(newSessionId)
+    setSessionName(newSessionName)
+    setMessages([])
+    
+    await loadSessions()
+    
+    return newSessionId
+  }, [currentUser, loadSessions])
+
+  const loadSession = useCallback(async (sid: string) => {
+    try {
+      setMessages([])
+      setIsLoadingSession(true)
+      
+      const listRes = await fetch(`${COPAW_BASE_URL}/api/chats?user_id=${currentUser?.username || 'default_user'}&channel=webchat`, { 
+        cache: 'no-store',
+        credentials: 'include'
+      })
+      
+      let chatId = sid
+      if (listRes.ok) {
+        const chats = await listRes.json()
+        const chat = chats.find((c: any) => c.session_id === sid)
+        if (chat && chat.id) {
+          chatId = chat.id
+        }
+      }
+      
+      const res = await fetch(`${COPAW_BASE_URL}/api/chats/${chatId}`, { 
+        cache: 'no-store',
+        credentials: 'include'
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setSessionName(data.name || '未命名会话')
+        if (data.messages && Array.isArray(data.messages)) {
+          const uiMessages = data.messages.map((m: any) => {
+            let content = ''
+            if (typeof m.content === 'string') {
+              content = m.content
+              if (content === '[object Object]' && m.metadata?.content) {
+                const metaContent = m.metadata.content
+                if (typeof metaContent === 'string') {
+                  content = metaContent
+                } else if (metaContent && typeof metaContent === 'object') {
+                  if (metaContent.text) {
+                    content = String(metaContent.text)
+                  } else {
+                    try {
+                      content = JSON.stringify(metaContent)
+                    } catch {
+                      content = String(metaContent)
+                    }
+                  }
+                }
+              }
+            } else if (m.content && typeof m.content === 'object') {
+              if (m.content.text) {
+                content = String(m.content.text)
+              } else if (Array.isArray(m.content)) {
+                content = m.content.map((item: any) => {
+                  if (typeof item === 'string') return item
+                  if (item && typeof item === 'object' && item.text) return String(item.text)
+                  if (item && typeof item === 'object' && item.type === 'text') return String(item.text || '')
+                  return String(item || '')
+                }).join(' ')
+              } else {
+                try {
+                  content = JSON.stringify(m.content)
+                } catch {
+                  content = String(m.content)
+                }
+              }
+            } else {
+              content = String(m.content || '')
+            }
+            return {
+              id: m.id || Math.random().toString(),
+              role: m.role === 'user' ? 'user' : 'assistant',
+              content,
+              timestamp: new Date(m.created_at || Date.now()),
+              type: m.message_type === 'reasoning' ? 'reasoning' : 'text',
+              metadata: m.metadata,
+            }
+          })
+          setMessages(uiMessages)
+        } else {
+          setMessages([])
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load session:', e)
+      setMessages([])
+    } finally {
+      setIsLoadingSession(false)
+    }
+    setSessionId(sid)
+  }, [currentUser])
+
   const handleSendMessage = useCallback(async (content: string) => {
     if (!content.trim() || isProcessing) return
 
-    // 取消之前的请求
+    let currentSid = sessionId
+    let currentSname = sessionName
+    
+    if (!currentSid) {
+      currentSid = await createNewSession()
+      currentSname = `新会话 ${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
+      setSessionName(currentSname)
+    }
+
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
     abortControllerRef.current = new AbortController()
 
-    // 添加用户消息
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: content.trim(),
       timestamp: new Date(),
+      type: 'text',
     }
-    setMessages(prev => [...prev, userMessage])
+    
+    const newMessages = [...messages, userMessage]
+    setMessages(newMessages)
 
-    // 添加加载中的助手消息
     const loadingMessageId = (Date.now() + 1).toString()
     const loadingMessage: Message = {
       id: loadingMessageId,
@@ -91,18 +271,29 @@ export default function CanvasPage() {
       content: '',
       timestamp: new Date(),
       isLoading: true,
+      type: 'text',
+      tools: [],
     }
-    setMessages(prev => [...prev, loadingMessage])
+    
+    const messagesWithLoading = [...newMessages, loadingMessage]
+    setMessages(messagesWithLoading)
     setIsProcessing(true)
     setShowChat(true)
 
     try {
-      const response = await fetch('/api/agent', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch(`${COPAW_BASE_URL}/api/agent/process`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream'
+        },
+        credentials: 'include',
         body: JSON.stringify({ 
-            message: content,
-            sessionId: sessionId
+          input: [{ role: 'user', content: [{ type: 'text', text: content }] }],
+          session_id: currentSid,
+          user_id: currentUser?.username || 'default_user',
+          channel: 'webchat',
+          stream: true
         }),
         signal: abortControllerRef.current.signal,
       })
@@ -111,54 +302,73 @@ export default function CanvasPage() {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      // 处理流式响应
-      const contentType = response.headers.get('content-type')
-      const isStream = contentType?.includes('text/plain')
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
       
-      if (isStream && response.body) {
-        const reader = response.body.getReader()
-        const decoder = new TextDecoder()
-        let fullContent = ''
-        let isThinking = true
-
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          
-          const chunk = decoder.decode(value, { stream: true })
-          
-          // 处理 thinking 标记
-          if (chunk.includes('__THINKING__')) {
-            isThinking = false
-            fullContent = fullContent.replace('__THINKING__', '')
-            continue
-          }
-          
-          fullContent += chunk
-          
-          setMessages(prev => prev.map(msg => 
-            msg.id === loadingMessageId 
-              ? { ...msg, content: fullContent, isLoading: isThinking }
-              : msg
-          ))
-        }
-        
-        // 确保最后不再显示 loading
-        setMessages(prev => prev.map(msg => 
-          msg.id === loadingMessageId 
-            ? { ...msg, content: fullContent, isLoading: false }
-            : msg
-        ))
-      } else {
-        const data = await response.json()
-        setMessages(prev => prev.map(msg => 
-          msg.id === loadingMessageId 
-            ? { ...msg, content: data.task?.result?.output || '任务完成', isLoading: false }
-            : msg
-        ))
+      if (!reader) {
+        throw new Error('No response body')
       }
+
+      let buffer = ''
+      const tools: ToolExecution[] = []
+      let currentContent = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const jsonStr = line.substring(6).trim()
+          if (jsonStr === '[DONE]') continue
+          
+          try {
+            const data = JSON.parse(jsonStr)
+            
+            if (data.object === 'content' && data.type === 'text' && data.delta) {
+              currentContent += data.text || ''
+            } else if (data.object === 'message' && data.status === 'completed') {
+              if (data.type === 'reasoning') {
+                // Handle reasoning content if needed
+              } else if (data.type === 'message') {
+                // Message completed
+              }
+            }
+            
+            setMessages(prev => prev.map(msg => 
+              msg.id === loadingMessageId 
+                ? { 
+                    ...msg, 
+                    content: currentContent,
+                    isLoading: false,
+                    tools: tools.length > 0 ? [...tools] : undefined
+                  }
+                : msg
+            ))
+          } catch {
+            // Ignore parse errors
+          }
+        }
+      }
+
+      setMessages(prev => prev.map(msg => 
+        msg.id === loadingMessageId 
+          ? { 
+              ...msg, 
+              content: currentContent,
+              isLoading: false,
+              tools: tools.length > 0 ? tools : undefined
+            }
+          : msg
+      ))
+      
+      loadSessions()
+      
     } catch (error: any) {
-      // 如果是 abort 错误，不显示错误消息
       if (error.name === 'AbortError') {
         return
       }
@@ -172,9 +382,8 @@ export default function CanvasPage() {
       setIsProcessing(false)
       abortControllerRef.current = null
     }
-  }, [isProcessing, sessionId])
+  }, [isProcessing, sessionId, sessionName, messages, currentUser, createNewSession, loadSessions])
 
-  // 自动发送初始消息
   useEffect(() => {
     if (initialInput && !hasAutoSent.current) {
       hasAutoSent.current = true
@@ -182,62 +391,24 @@ export default function CanvasPage() {
       const nextSession = initialSession || `session_${Date.now()}`
       setSessionId(nextSession)
       setMessages([])
-      
-      // 先显示聊天窗口
       setShowChat(true)
-      
-      // 延迟一点发送消息，确保 UI 已更新
       setTimeout(() => {
         handleSendMessage(decodedMessage)
       }, 100)
     }
   }, [initialInput, initialSession, handleSendMessage])
 
-  // 处理 AgentCanvas 的消息（当用户从画布发送消息时）
   const handleCanvasMessage = (content: string) => {
     setShowChat(true)
     handleSendMessage(content)
   }
 
-  // Handle chat session change
-  const handleSessionChange = (newSessionId: string) => {
-    setSessionId(newSessionId)
-    // Clear messages or load history
-    setMessages([])
-    // Optionally fetch history for new session
-    fetchHistory(newSessionId)
-  }
-
-  const fetchHistory = async (id: string) => {
-      try {
-          const res = await fetch(`/api/history/${id}`)
-          if (res.ok) {
-              const data = await res.json()
-              // Transform CoPaw messages to UI messages
-              if (data.messages && Array.isArray(data.messages)) {
-                  const uiMessages = data.messages.flatMap((msg: any) => {
-                      if (!msg.content) return []
-                      // Handle array content
-                      let content = ''
-                      if (Array.isArray(msg.content)) {
-                          content = msg.content.map((c: any) => c.text || '').join('')
-                      } else if (typeof msg.content === 'string') {
-                          content = msg.content
-                      }
-                      
-                      return [{
-                          id: msg.id || Math.random().toString(),
-                          role: msg.role === 'user' ? 'user' : 'assistant',
-                          content: content,
-                          timestamp: new Date(msg.created_at || Date.now())
-                      }]
-                  })
-                  setMessages(uiMessages)
-              }
-          }
-      } catch (e) {
-          console.error('Failed to load history', e)
-      }
+  const handleSessionChange = async (newSessionId: string) => {
+    if (newSessionId === 'new') {
+      await createNewSession()
+    } else {
+      loadSession(newSessionId)
+    }
   }
 
   return (
@@ -250,12 +421,18 @@ export default function CanvasPage() {
         onChatExpand={() => setShowChat(true)}
         onChatSend={handleSendMessage}
         chatProcessing={isProcessing}
+        isLoadingSession={isLoadingSession}
         currentSessionId={sessionId}
+        currentSessionName={sessionName}
         onSessionChange={handleSessionChange}
+        onCreateNewSession={createNewSession}
         isAuthenticated={isAuthenticated}
         currentUser={currentUser}
         onLogin={handleLogin}
         onLogout={handleLogout}
+        sessions={sessions}
+        onRefreshSessions={loadSessions}
+        chatEndRef={chatEndRef}
       />
     </div>
   )

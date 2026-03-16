@@ -658,6 +658,8 @@ function AgentCanvasContent({
   }, [])
 
   const parseMessageAttachments = useCallback((content: string) => {
+    // Ensure content is a string - handle cases where API returns objects
+    const contentStr = typeof content === 'string' ? content : String(content || '')
     const items: { label: string; url: string; kind: 'image' | 'video' | 'file' }[] = []
     const regex = /\[(图片|视频|附件)\s*\d+\]\(((?:https?:\/\/|\/?api\/uploads\/)[^)]+)\)/g
     const normalizeUrl = (raw: string) => {
@@ -673,13 +675,13 @@ function AgentCanvasContent({
       return raw
     }
     let match: RegExpExecArray | null
-    while ((match = regex.exec(content)) !== null) {
+    while ((match = regex.exec(contentStr)) !== null) {
       const label = match[1]
       const url = normalizeUrl(match[2])
       const kind = resolveAttachmentKind(url)
       items.push({ label, url, kind })
     }
-    const text = content
+    const text = contentStr
       .replace(regex, '')
       .replace(/(?:https?:\/\/\S+|\/?api\/uploads\/\S+)/g, '')
       .replace(/\s{2,}/g, ' ')
@@ -875,12 +877,16 @@ function AgentCanvasContent({
 
     for (const msg of chatMessages) {
       if (msg.role !== 'assistant') continue
-      const matches = msg.content?.match(urlRegex) || []
+      // Ensure content is string before regex match
+      const contentStr = typeof msg.content === 'string' ? msg.content : String(msg.content || '')
+      const matches = contentStr.match(urlRegex) || []
       for (const rawUrl of matches) {
         const url = rawUrl.replace(/[)\]]+$/, '')
         if (processedMediaRef.current.has(url)) continue
         processedMediaRef.current.add(url)
         const type = extensionType(url)
+        // Only add media files (image, video, audio), skip regular files
+        if (type === 'file') continue
         const name = url.split('/').pop() || url
         mediaUrls.push({ url, type, name })
       }
@@ -888,8 +894,38 @@ function AgentCanvasContent({
 
     if (mediaUrls.length === 0) return
 
-    setNodes((prev) => {
-      const existing = prev.filter(n => n.data.source === 'agent')
+    // Load actual image dimensions to maintain aspect ratio
+    const loadImageDimensions = (url: string): Promise<{ width: number; height: number; aspectRatio: number }> => {
+      return new Promise((resolve) => {
+        const img = new Image()
+        img.onload = () => {
+          resolve({ width: img.width, height: img.height, aspectRatio: img.width / img.height })
+        }
+        img.onerror = () => {
+          // Default to 16:9 if image fails to load
+          resolve({ width: 1920, height: 1080, aspectRatio: 16 / 9 })
+        }
+        img.src = url
+      })
+    }
+
+    const loadVideoDimensions = (url: string): Promise<{ width: number; height: number; aspectRatio: number }> => {
+      return new Promise((resolve) => {
+        const video = document.createElement('video')
+        video.onloadedmetadata = () => {
+          resolve({ width: video.videoWidth, height: video.videoHeight, aspectRatio: video.videoWidth / video.videoHeight })
+        }
+        video.onerror = () => {
+          resolve({ width: 1920, height: 1080, aspectRatio: 16 / 9 })
+        }
+        video.src = url
+        video.preload = 'metadata'
+      })
+    }
+
+    // Process media and create nodes with correct aspect ratios
+    const processMedia = async () => {
+      const existing = nodes.filter(n => n.data.source === 'agent')
       const baseIndex = existing.length
       const columnCount = 3
       const gapX = 340
@@ -897,29 +933,50 @@ function AgentCanvasContent({
       const startX = 60
       const startY = 60
 
-      const newNodes: Node<CanvasItemData>[] = mediaUrls.map((item, idx) => {
+      const newNodes: Node<CanvasItemData>[] = []
+
+      for (let idx = 0; idx < mediaUrls.length; idx++) {
+        const item = mediaUrls[idx]
         const index = baseIndex + idx
         const col = index % columnCount
         const row = Math.floor(index / columnCount)
         const position = { x: startX + col * gapX, y: startY + row * gapY }
-        return {
+
+        // Get actual dimensions
+        let aspectRatio = 16 / 9
+        try {
+          if (item.type === 'image') {
+            const dims = await loadImageDimensions(item.url)
+            aspectRatio = dims.aspectRatio
+          } else if (item.type === 'video') {
+            const dims = await loadVideoDimensions(item.url)
+            aspectRatio = dims.aspectRatio
+          }
+        } catch (e) {
+          // Use default aspect ratio
+        }
+
+        newNodes.push({
           id: `chat_media_${Date.now()}_${index}`,
           type: item.type === 'image' || item.type === 'video' ? 'media' : 'file',
           position,
           data: {
             type: item.type,
             status: 'completed',
-            aspectRatio: item.type === 'image' || item.type === 'video' ? 16 / 9 : 1,
+            aspectRatio,
             name: item.name,
             url: item.url,
             rawUrl: item.url,
             source: 'agent',
           },
-        }
-      })
-      return [...prev, ...newNodes]
-    })
-  }, [chatMessages, setNodes])
+        })
+      }
+
+      setNodes((prev) => [...prev, ...newNodes])
+    }
+
+    processMedia()
+  }, [chatMessages])
 
   const toolbarItems = [
     { id: 'canvas', icon: MousePointer2, label: 'Select' },
