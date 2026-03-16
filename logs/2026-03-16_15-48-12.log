@@ -1,0 +1,23 @@
+2026-03-16 15:48:12 | INFO | application.py:133 | start | Init ReMe with config: {"backend":"","app_name":"ReMe","working_dir":"/home/alex/Webchat-Dev/data/copaw-dev","enable_logo":false,"language":"","thread_pool_max_workers":16,"ray_max_workers":-1,"log_to_console":false,"disabled_flows":[],"enabled_flows":[],"mcp_servers":{},"mcp":{"transport":"stdio","host":"0.0.0.0","port":8001},"http":{"host":"0.0.0.0","port":8001,"timeout_keep_alive":3600,"limit_concurrency":1000},"cmd":{"flow":""},"ops":{},"flows":{},"as_llms":{"default":{"backend":"openai","model_name":"qwen3.5-plus"}},"as_llm_formatters":{"default":{"backend":"openai"}},"llms":{},"embedding_models":{"default":{"backend":"openai","model_name":"","dimensions":1024,"use_dimensions":false,"enable_cache":true,"max_batch_size":10,"max_cache_size":2000,"max_input_length":8192}},"vector_stores":{},"file_stores":{"default":{"backend":"chroma","embedding_model":"default","store_name":"copaw","vector_enabled":false,"fts_enabled":true}},"token_counters":{},"file_watchers":{"default":{"backend":"full","file_store":"default","watch_paths":["/home/alex/Webchat-Dev/data/copaw-dev/MEMORY.md","/home/alex/Webchat-Dev/data/copaw-dev/memory.md","/home/alex/Webchat-Dev/data/copaw-dev/memory"],"suffix_filters":[".md"],"recursive":false,"scan_on_start":true}},"metadata":{}}
+2026-03-16 15:48:12 | INFO | base_embedding_model.py:141 | _load_cache | No cache file found at /home/alex/Webchat-Dev/data/copaw-dev/embedding_cache/embedding_cache.jsonl, starting with empty cache
+2026-03-16 15:48:12 | INFO | chroma_file_store.py:134 | start | ChromaDB initialized with collection: chunks_copaw
+2026-03-16 15:48:12 | INFO | chroma_file_store.py:135 | start | File metadata will be persisted to: /home/alex/Webchat-Dev/data/copaw-dev/copaw_file_metadata.json
+2026-03-16 15:48:12 | WARNING | base_file_watcher.py:116 | _scan_existing_files | Watch path does not exist: /home/alex/Webchat-Dev/data/copaw-dev/MEMORY.md
+2026-03-16 15:48:12 | WARNING | base_file_watcher.py:116 | _scan_existing_files | Watch path does not exist: /home/alex/Webchat-Dev/data/copaw-dev/memory.md
+2026-03-16 15:48:12 | INFO | base_file_watcher.py:137 | _scan_existing_files | [SCAN_ON_START] Found 1 existing files matching watch criteria
+2026-03-16 15:48:12 | INFO | full_file_watcher.py:65 | _on_changes | delete_file /home/alex/Webchat-Dev/data/copaw-dev/memory/2026-03-13.md
+2026-03-16 15:48:13 | INFO | full_file_watcher.py:68 | _on_changes | Upserted 2 chunks for /home/alex/Webchat-Dev/data/copaw-dev/memory/2026-03-13.md
+2026-03-16 15:48:13 | INFO | full_file_watcher.py:77 | _on_changes | File 1 changed: /home/alex/Webchat-Dev/data/copaw-dev/memory/2026-03-13.md
+2026-03-16 15:48:13 | INFO | base_file_watcher.py:212 | on_changes | [FullFileWatcher] on_changes: {(<Change.added: 1>, '/home/alex/Webchat-Dev/data/copaw-dev/memory/2026-03-13.md')}
+2026-03-16 15:48:13 | INFO | base_file_watcher.py:139 | _scan_existing_files | [SCAN_ON_START] Added 1 files to memory store
+2026-03-16 15:48:13 | INFO | base_file_watcher.py:147 | _scan_existing_files | Found existing file: /home/alex/Webchat-Dev/data/copaw-dev/memory/2026-03-13.md, 2 chunks
+2026-03-16 15:48:13 | INFO | base_file_watcher.py:82 | start | Started watching: ['/home/alex/Webchat-Dev/data/copaw-dev/MEMORY.md', '/home/alex/Webchat-Dev/data/copaw-dev/memory.md', '/home/alex/Webchat-Dev/data/copaw-dev/memory']
+2026-03-16 15:48:13 | WARNING | base_file_watcher.py:173 | _watch_loop | Skipping non-existent paths: {'/home/alex/Webchat-Dev/data/copaw-dev/MEMORY.md', '/home/alex/Webchat-Dev/data/copaw-dev/memory.md'}
+2026-03-16 15:48:13 | INFO | base_file_watcher.py:176 | _watch_loop | Starting watch on valid paths: ['/home/alex/Webchat-Dev/data/copaw-dev/memory']
+2026-03-16 15:48:13 | INFO | application.py:267 | close | Closing file store: default
+2026-03-16 15:48:13 | INFO | application.py:271 | close | Closing file watcher: default
+2026-03-16 15:48:13 | INFO | base_file_watcher.py:93 | close | Stopped watching
+2026-03-16 15:48:13 | INFO | application.py:279 | close | Closing embedding model: default
+2026-03-16 15:48:13 | INFO | base_embedding_model.py:198 | _save_cache | Attempting to save cache, current size: 0
+2026-03-16 15:48:13 | INFO | base_embedding_model.py:200 | _save_cache | Cache is empty, skipping save
+2026-03-16 15:48:15 | WARNING | application.py:259 | close | Application is not started
