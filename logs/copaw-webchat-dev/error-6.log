@@ -683,3 +683,61 @@ INFO CoPaw/src/copaw/app/runner/runner.py:81 | 2026-03-16 07:51:29 | Handle agen
 WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 07:51:29 | No content loaded from working directory
 WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-16 07:51:33 | No content loaded from working directory
 INFO CoPaw/src/copaw/agents/tools/browser_control.py:145 | 2026-03-16 08:07:03 | Browser idle for 1844s (limit 1800s), stopping to release resources
+/home/alex/.local/lib/python3.12/site-packages/websockets/legacy/__init__.py:6: DeprecationWarning: websockets.legacy is deprecated; see https://websockets.readthedocs.io/en/stable/howto/upgrade.html for upgrade instructions
+  warnings.warn(  # deprecated in 14.0 - 2024-11-09
+/home/alex/.local/lib/python3.12/site-packages/uvicorn/protocols/websockets/websockets_impl.py:17: DeprecationWarning: websockets.server.WebSocketServerProtocol is deprecated
+  from websockets.server import WebSocketServerProtocol
+[33mWARNING[0m /home/alex/.local/lib/python3.12/site-packages/agentscope_runtime/engine/deployers/adapter/a2a/nacos_a2a_registry.py:45 | 2026-03-17 06:24:12 | [NacosRegistry] Nacos SDK (nacos-sdk-python) is not available. Install it with: pip install nacos-sdk-python
+INFO CoPaw/src/copaw/app/_app.py:482 | 2026-03-17 06:24:12 | STATIC_DIR: /home/alex/CoPaw/src/copaw/console
+INFO:     Started server process [119131]
+INFO:     Waiting for application startup.
+WARNING CoPaw/src/copaw/agents/memory/memory_manager.py:107 | 2026-03-17 06:24:13 | Vector search disabled. Memory search functionality will be restricted. To enable, configure: EMBEDDING_API_KEY, EMBEDDING_BASE_URL, EMBEDDING_MODEL_NAME.
+2026-03-17 06:24:13.470 | INFO     | reme.core.utils.env_utils:load_env:52 - Loading environment from: /home/alex/Webchat-Dev/.env
+2026-03-17 06:24:13.471 | INFO     | reme.core.service_context:__init__:95 - update with args: ['config=light'] kwargs: {'embedding_models': {'default': {'model_name': '', 'dimensions': 1024, 'enable_cache': True, 'use_dimensions': False, 'max_cache_size': 2000, 'max_input_length': 8192, 'max_batch_size': 10}}, 'file_stores': {'default': {'backend': 'chroma', 'store_name': 'copaw', 'vector_enabled': False, 'fts_enabled': True}}, 'file_watchers': {'default': {'watch_paths': ['/home/alex/Webchat-Dev/data/copaw-dev/MEMORY.md', '/home/alex/Webchat-Dev/data/copaw-dev/memory.md', '/home/alex/Webchat-Dev/data/copaw-dev/memory']}}, 'enable_logo': False, 'log_to_console': False, 'working_dir': '/home/alex/Webchat-Dev/data/copaw-dev'}
+2026-03-17 06:24:13.472 | INFO     | reme.core.utils.pydantic_config_parser:_find_config_path:138 - load config=/home/alex/.local/lib/python3.12/site-packages/reme/config/light.yaml
+INFO CoPaw/src/copaw/agents/utils/token_counting.py:41 | 2026-03-17 06:24:13 | Using local Qwen tokenizer from /home/alex/Webchat-Dev/CoPaw/src/copaw/tokenizer
+PyTorch was not found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+/usr/lib/python3.12/contextlib.py:105: DeprecationWarning: Use `streamable_http_client` instead.
+  self.gen = func(*args, **kwds)
+2026-03-17 06:24:36,086 | INFO    | _stateful_client_base:connect:66 - MCP client connected.
+/home/alex/Webchat-Dev/CoPaw/src/copaw/app/channels/feishu/channel.py:82: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+  import pkg_resources as _pkg_resources_module  # type: ignore
+/usr/lib/python3/dist-packages/pkg_resources/__init__.py:2871: DeprecationWarning: Deprecated call to `pkg_resources.declare_namespace('google')`.
+Implementing implicit namespace packages (as specified in PEP 420) is preferred to `pkg_resources.declare_namespace`. See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages
+  declare_namespace(pkg)
+/usr/lib/python3/dist-packages/pkg_resources/__init__.py:2871: DeprecationWarning: Deprecated call to `pkg_resources.declare_namespace('zope')`.
+Implementing implicit namespace packages (as specified in PEP 420) is preferred to `pkg_resources.declare_namespace`. See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages
+  declare_namespace(pkg)
+/home/alex/.local/lib/python3.12/site-packages/lark_oapi/ws/pb/google/__init__.py:2: DeprecationWarning: Deprecated call to `pkg_resources.declare_namespace('lark_oapi.ws.pb.google')`.
+Implementing implicit namespace packages (as specified in PEP 420) is preferred to `pkg_resources.declare_namespace`. See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages
+  __import__('pkg_resources').declare_namespace(__name__)
+/usr/lib/python3/dist-packages/pkg_resources/__init__.py:2350: DeprecationWarning: Deprecated call to `pkg_resources.declare_namespace('lark_oapi.ws.pb')`.
+Implementing implicit namespace packages (as specified in PEP 420) is preferred to `pkg_resources.declare_namespace`. See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages
+  declare_namespace(parent)
+/usr/lib/python3/dist-packages/pkg_resources/__init__.py:2350: DeprecationWarning: Deprecated call to `pkg_resources.declare_namespace('lark_oapi.ws')`.
+Implementing implicit namespace packages (as specified in PEP 420) is preferred to `pkg_resources.declare_namespace`. See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages
+  declare_namespace(parent)
+/usr/lib/python3/dist-packages/pkg_resources/__init__.py:2350: DeprecationWarning: Deprecated call to `pkg_resources.declare_namespace('lark_oapi')`.
+Implementing implicit namespace packages (as specified in PEP 420) is preferred to `pkg_resources.declare_namespace`. See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages
+  declare_namespace(parent)
+/home/alex/.local/lib/python3.12/site-packages/lark_oapi/ws/pb/google/protobuf/internal/well_known_types.py:91: DeprecationWarning: datetime.datetime.utcfromtimestamp() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.fromtimestamp(timestamp, datetime.UTC).
+  _EPOCH_DATETIME_NAIVE = datetime.datetime.utcfromtimestamp(0)
+/home/alex/.local/lib/python3.12/site-packages/lark_oapi/ws/client.py:67: DeprecationWarning: websockets.InvalidStatusCode is deprecated
+  def _parse_ws_conn_exception(e: websockets.InvalidStatusCode):
+INFO CoPaw/src/copaw/app/channels/console/channel.py:350 | 2026-03-17 06:24:52 | Console channel started
+INFO CoPaw/src/copaw/app/channels/voice/channel.py:84 | 2026-03-17 06:24:52 | Voice channel disabled, skipping start
+/home/alex/.local/lib/python3.12/site-packages/aiohttp/web_app.py:305: DeprecationWarning: old-style middleware "<function WebChatChannel._setup_routes.<locals>.cors_middleware at 0x7c7bedf114e0>" deprecated, see #2252
+  self._middlewares_handlers = tuple(self._prepare_middleware())
+INFO CoPaw/src/copaw/config/watcher.py:58 | 2026-03-17 06:24:52 | ConfigWatcher started (poll=2.0s, path=/home/alex/Webchat-Dev/data/copaw-dev/config.json)
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:7088 (Press CTRL+C to quit)
+INFO CoPaw/src/copaw/app/runner/runner.py:81 | 2026-03-17 07:42:57 | Handle agent query:
+{
+  "session_id": "session_1773717378741_btwpck76o",
+  "user_id": "admin",
+  "channel": "webchat",
+  "msgs_len": 1,
+  "msgs_str": "[Msg(id='msg_2ae7b06a-95aa-43f2-8499-c14dc3f80f71', name='user', content=[{'type': 'text', 'text': '？？'}], role='user', metadata=None, timestamp='2026-03-17 07:42:57.247', invocation_id='None')]..."
+}
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-17 07:42:57 | No content loaded from working directory
+WARNING CoPaw/src/copaw/agents/prompt.py:116 | 2026-03-17 07:43:01 | No content loaded from working directory

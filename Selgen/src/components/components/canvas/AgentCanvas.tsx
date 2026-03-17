@@ -1001,6 +1001,12 @@ function AgentCanvasContent({
               onEdgesChange={onEdgesChange}
               setNodes={setNodes}
               onAttachmentContextMenu={handleAttachmentContextMenu}
+              onNodeDelete={(id) => {
+                const deletedNode = nodes.find(n => n.id === id)
+                if (deletedNode?.data?.source === 'user') {
+                  console.log(`Deleted user uploaded attachment: ${id}`)
+                }
+              }}
             />
         </div>
 

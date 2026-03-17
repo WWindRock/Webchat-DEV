@@ -28,6 +28,7 @@ export function ChatHistoryList({ isOpen, onClose, onSelectChat, onNewChat, curr
   const { sessions, isLoading, refresh } = useChatSync()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draftName, setDraftName] = useState('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     if (isOpen) {
@@ -37,14 +38,25 @@ export function ChatHistoryList({ isOpen, onClose, onSelectChat, onNewChat, curr
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
-    try {
-      const res = await fetch(`/api/history/${id}`, { method: 'DELETE' })
-      if (res.ok) {
-        refresh()
+    if (deletingId === id) {
+      try {
+        const res = await fetch(`/api/history/${id}`, { method: 'DELETE' })
+        if (res.ok) {
+          refresh()
+          setDeletingId(null)
+        }
+      } catch (e) {
+        console.error('Failed to delete chat', e)
+        setDeletingId(null)
       }
-    } catch (e) {
-      console.error('Failed to delete chat', e)
+    } else {
+      setDeletingId(id)
     }
+  }
+
+  const handleDeleteCancel = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setDeletingId(null)
   }
 
   const handleRename = async (e: React.MouseEvent, session: ChatSession) => {
@@ -155,6 +167,21 @@ export function ChatHistoryList({ isOpen, onClose, onSelectChat, onNewChat, curr
                     >
                       <Check className="w-3.5 h-3.5" />
                     </button>
+                  ) : deletingId === session.id ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => handleDelete(e, session.id)}
+                        className="p-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg transition-all"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={handleDeleteCancel}
+                        className="p-1.5 hover:bg-white/10 rounded-lg transition-all text-muted-foreground"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   ) : (
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                       <button

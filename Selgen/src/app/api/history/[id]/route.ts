@@ -1,14 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+function getCopawBaseUrl() {
+  const envPort = process.env.COPAW_PORT || '7088'
+  if (process.env.COPAW_BASE_URL) {
+    return `${process.env.COPAW_BASE_URL}:${envPort}`
+  }
+  
+  const externalHost = 'http://107.172.137.173'
+  return `${externalHost}:${envPort}`
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const copawPort = process.env.COPAW_PORT || '7088'
-    const copawBase = `http://127.0.0.1:${copawPort}/api/chats`
+    const copawBase = getCopawBaseUrl()
     if (params.id === 'default') {
-      const listRes = await fetch(copawBase, { cache: 'no-store' })
+      const listRes = await fetch(copawBase + '/api/chats', { 
+        cache: 'no-store',
+        credentials: 'include'
+      })
       if (!listRes.ok) {
         return NextResponse.json({ messages: [] })
       }
@@ -17,15 +29,21 @@ export async function GET(
       if (!first?.id) {
         return NextResponse.json({ messages: [] })
       }
-      const detailRes = await fetch(`${copawBase}/${first.id}`, { cache: 'no-store' })
+      const detailRes = await fetch(`${copawBase}/api/chats/${first.id}`, { 
+        cache: 'no-store',
+        credentials: 'include'
+      })
       if (!detailRes.ok) {
         return NextResponse.json({ messages: [] })
       }
       const data = await detailRes.json()
       return NextResponse.json(data)
     }
-    const copawUrl = `${copawBase}/${params.id}`
-    const response = await fetch(copawUrl, { cache: 'no-store' })
+    const copawUrl = `${copawBase}/api/chats/${params.id}`
+    const response = await fetch(copawUrl, { 
+      cache: 'no-store',
+      credentials: 'include' 
+    })
     
     if (!response.ok) {
         return NextResponse.json({ error: 'Chat not found' }, { status: 404 })
@@ -46,12 +64,14 @@ export async function PATCH(
   try {
     const body = await request.json()
     const name = (body?.name as string) || ''
-    const copawPort = process.env.COPAW_PORT || '7088'
-    const copawBase = `http://127.0.0.1:${copawPort}/api/chats`
+    const copawBase = getCopawBaseUrl()
     
     // First, try to find the chat by session_id
     let chatId = params.id
-    const listRes = await fetch(copawBase, { cache: 'no-store' })
+    const listRes = await fetch(copawBase + '/api/chats', { 
+      cache: 'no-store',
+      credentials: 'include'
+    })
     if (listRes.ok) {
       const chats = await listRes.json()
       const chat = chats.find((c: any) => c.session_id === params.id)
@@ -61,7 +81,10 @@ export async function PATCH(
     }
     
     // Fetch existing chat spec
-    const getRes = await fetch(`${copawBase}/${chatId}`, { cache: 'no-store' })
+    const getRes = await fetch(`${copawBase}/api/chats/${chatId}`, { 
+      cache: 'no-store',
+      credentials: 'include'
+    })
     if (!getRes.ok) {
       return NextResponse.json({ error: 'Chat not found' }, { status: 404 })
     }
@@ -75,11 +98,12 @@ export async function PATCH(
       updated_at: new Date().toISOString()
     }
     
-    const copawUrl = `${copawBase}/${chatId}`
+    const copawUrl = `${copawBase}/api/chats/${chatId}`
     const response = await fetch(copawUrl, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedChat)
+      body: JSON.stringify(updatedChat),
+      credentials: 'include'
     })
     if (!response.ok) {
       return NextResponse.json({ error: 'Failed to rename chat' }, { status: response.status })
@@ -97,12 +121,14 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const copawPort = process.env.COPAW_PORT || '7088'
-    const copawBase = `http://127.0.0.1:${copawPort}/api/chats`
+    const copawBase = getCopawBaseUrl()
     
     // First, try to find the chat by session_id
     let chatId = params.id
-    const listRes = await fetch(copawBase, { cache: 'no-store' })
+    const listRes = await fetch(copawBase + '/api/chats', { 
+      cache: 'no-store',
+      credentials: 'include'
+    })
     if (listRes.ok) {
       const chats = await listRes.json()
       const chat = chats.find((c: any) => c.session_id === params.id)
@@ -111,8 +137,11 @@ export async function DELETE(
       }
     }
     
-    const copawUrl = `${copawBase}/${chatId}`
-    const response = await fetch(copawUrl, { method: 'DELETE' })
+    const copawUrl = `${copawBase}/api/chats/${chatId}`
+    const response = await fetch(copawUrl, { 
+      method: 'DELETE',
+      credentials: 'include'
+    })
     if (!response.ok) {
       return NextResponse.json({ error: 'Failed to delete chat' }, { status: response.status })
     }

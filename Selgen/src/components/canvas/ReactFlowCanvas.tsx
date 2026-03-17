@@ -24,11 +24,12 @@ import {
   Loader2,
   Play,
   Pause,
-  MoreHorizontal,
+  Trash2,
   Download,
   Edit3,
   Eraser,
-  Upload
+  Upload,
+  Check
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTOSUpload } from '@/hooks/useTOSUpload'
@@ -69,8 +70,11 @@ function ToolbarButton({ icon: Icon, tooltip, onClick }: { icon: React.ElementTy
   )
 }
 
-function MediaNode({ id, data, selected, onAttachmentContextMenu }: { id: string; data: CanvasItemData; selected: boolean; onAttachmentContextMenu?: (e: React.MouseEvent, attachment: { id: string; url?: string; rawUrl?: string; name: string; type: CanvasItemData['type'] }) => void }) {
+function MediaNode({ id, data, selected, onAttachmentContextMenu, onDelete }: { id: string; data: CanvasItemData; selected: boolean; onAttachmentContextMenu?: (e: React.MouseEvent, attachment: { id: string; url?: string; rawUrl?: string; name: string; type: CanvasItemData['type'] }) => void; onDelete?: (id: string) => void }) {
   const [isPlaying, setIsPlaying] = useState(false)
+  const [isDeleteConfirming, setIsDeleteConfirming] = useState(false)
+  const [showConfigPanel, setShowConfigPanel] = useState(false)
+  const [activeConfigTab, setActiveConfigTab] = useState('general')
   const videoRef = useRef<HTMLVideoElement>(null)
 
   const handlePlayPause = (e: React.MouseEvent) => {
@@ -85,6 +89,51 @@ function MediaNode({ id, data, selected, onAttachmentContextMenu }: { id: string
     }
   }
 
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isDeleteConfirming) {
+      onDelete?.(id)
+      setIsDeleteConfirming(false)
+    } else {
+      setIsDeleteConfirming(true)
+    }
+  }
+
+  const handleDeleteCancel = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setIsDeleteConfirming(false)
+  }
+
+  const handleToolClick = (e: React.MouseEvent, tool: string) => {
+    e.stopPropagation()
+    setShowConfigPanel(true)
+    if (tool === 'background') {
+      setActiveConfigTab('background')
+    } else if (tool === 'mockup') {
+      setActiveConfigTab('mockup')
+    } else if (tool === 'erase') {
+      setActiveConfigTab('erase')
+    } else if (tool === 'edit') {
+      setActiveConfigTab('edit')
+    } else if (tool === 'text') {
+      setActiveConfigTab('text')
+    }
+  }
+
+  const handleGenerate = () => {
+    console.log(`Generating with config for node ${id}`)
+    setShowConfigPanel(false)
+  }
+
+  const configTabs = [
+    { id: 'general', label: '通用' },
+    { id: 'background', label: '背景' },
+    { id: 'mockup', label: '样机' },
+    { id: 'erase', label: '擦除' },
+    { id: 'edit', label: '编辑' },
+    { id: 'text', label: '文字' },
+  ]
+
   return (
     <>
       <NodeToolbar
@@ -96,17 +145,275 @@ function MediaNode({ id, data, selected, onAttachmentContextMenu }: { id: string
           <ToolbarButton icon={ZoomIn} tooltip="Zoom In" />
           <ToolbarButton icon={ZoomOut} tooltip="Zoom Out" />
           <div className="w-px h-5 bg-white/10 mx-1" />
-          <ToolbarButton icon={Layers} tooltip="Remove Background" />
-          <ToolbarButton icon={Box} tooltip="Mockup" />
-          <ToolbarButton icon={Eraser} tooltip="Erase" />
+          <button
+            onClick={(e) => handleToolClick(e, 'background')}
+            className="p-2 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+            title="Remove Background"
+          >
+            <Layers className="w-4 h-4" />
+          </button>
+          <button
+            onClick={(e) => handleToolClick(e, 'mockup')}
+            className="p-2 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+            title="Mockup"
+          >
+            <Box className="w-4 h-4" />
+          </button>
+          <button
+            onClick={(e) => handleToolClick(e, 'erase')}
+            className="p-2 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+            title="Erase"
+          >
+            <Eraser className="w-4 h-4" />
+          </button>
           <div className="w-px h-5 bg-white/10 mx-1" />
-          <ToolbarButton icon={Edit3} tooltip="Edit Elements" />
-          <ToolbarButton icon={Type} tooltip="Edit Text" />
+          <button
+            onClick={(e) => handleToolClick(e, 'edit')}
+            className="p-2 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+            title="Edit Elements"
+          >
+            <Edit3 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={(e) => handleToolClick(e, 'text')}
+            className="p-2 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+            title="Edit Text"
+          >
+            <Type className="w-4 h-4" />
+          </button>
           <ToolbarButton icon={Download} tooltip="Download" />
           <div className="w-px h-5 bg-white/10 mx-1" />
-          <ToolbarButton icon={MoreHorizontal} tooltip="More Options" />
+          {isDeleteConfirming ? (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleDeleteClick}
+                className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                title="确认删除"
+              >
+                <Check className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleDeleteCancel}
+                className="p-2 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+                title="取消"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <ToolbarButton icon={Trash2} tooltip="Delete" onClick={() => setIsDeleteConfirming(true)} />
+          )}
         </div>
       </NodeToolbar>
+
+      {showConfigPanel && selected && (
+        <NodeToolbar
+          isVisible={true}
+          position={Position.Right}
+          offset={20}
+        >
+          <div className="w-72 rounded-xl bg-[#141419]/95 backdrop-blur-sm border border-white/10 shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
+              <span className="text-sm font-medium text-foreground">参数配置</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowConfigPanel(false)
+                }}
+                className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="flex border-b border-white/10">
+              {configTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setActiveConfigTab(tab.id)
+                  }}
+                  className={cn(
+                    "flex-1 px-2 py-2 text-xs font-medium transition-colors",
+                    activeConfigTab === tab.id
+                      ? "bg-primary/20 text-primary border-b-2 border-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <div className="p-3 space-y-3 min-h-[120px]">
+              {activeConfigTab === 'general' && (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">名称</label>
+                    <input
+                      type="text"
+                      defaultValue={data.name}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">质量</label>
+                    <select
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <option value="high">高质量</option>
+                      <option value="medium">中等</option>
+                      <option value="low">低质量</option>
+                    </select>
+                  </div>
+                </>
+              )}
+              {activeConfigTab === 'background' && (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">背景类型</label>
+                    <select
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <option value="transparent">透明</option>
+                      <option value="white">白色</option>
+                      <option value="blur">模糊</option>
+                      <option value="custom">自定义</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">边缘平滑</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      defaultValue="50"
+                      className="w-full accent-primary"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                </>
+              )}
+              {activeConfigTab === 'mockup' && (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">样机模板</label>
+                    <select
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <option value="phone">手机</option>
+                      <option value="laptop">笔记本</option>
+                      <option value="tablet">平板</option>
+                      <option value="frame">画框</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">角度</label>
+                    <input
+                      type="range"
+                      min="-45"
+                      max="45"
+                      defaultValue="0"
+                      className="w-full accent-primary"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                </>
+              )}
+              {activeConfigTab === 'erase' && (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">画笔大小</label>
+                    <input
+                      type="range"
+                      min="1"
+                      max="50"
+                      defaultValue="10"
+                      className="w-full accent-primary"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">模式</label>
+                    <select
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <option value="erase">擦除</option>
+                      <option value="restore">恢复</option>
+                    </select>
+                  </div>
+                </>
+              )}
+              {activeConfigTab === 'edit' && (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">亮度</label>
+                    <input
+                      type="range"
+                      min="-50"
+                      max="50"
+                      defaultValue="0"
+                      className="w-full accent-primary"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">对比度</label>
+                    <input
+                      type="range"
+                      min="-50"
+                      max="50"
+                      defaultValue="0"
+                      className="w-full accent-primary"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                </>
+              )}
+              {activeConfigTab === 'text' && (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">文字内容</label>
+                    <input
+                      type="text"
+                      placeholder="输入文字..."
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">字体大小</label>
+                    <input
+                      type="range"
+                      min="12"
+                      max="72"
+                      defaultValue="24"
+                      className="w-full accent-primary"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="p-3 border-t border-white/10">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleGenerate()
+                }}
+                className="w-full py-2 px-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                Generate
+              </button>
+            </div>
+          </div>
+        </NodeToolbar>
+      )}
 
       <div
         className={cn(
@@ -201,7 +508,24 @@ function MediaNode({ id, data, selected, onAttachmentContextMenu }: { id: string
   )
 }
 
-function FileNode({ id, data, selected, onAttachmentContextMenu }: { id: string; data: CanvasItemData; selected: boolean; onAttachmentContextMenu?: (e: React.MouseEvent, attachment: { id: string; url?: string; rawUrl?: string; name: string; type: CanvasItemData['type'] }) => void }) {
+function FileNode({ id, data, selected, onAttachmentContextMenu, onDelete }: { id: string; data: CanvasItemData; selected: boolean; onAttachmentContextMenu?: (e: React.MouseEvent, attachment: { id: string; url?: string; rawUrl?: string; name: string; type: CanvasItemData['type'] }) => void; onDelete?: (id: string) => void }) {
+  const [isDeleteConfirming, setIsDeleteConfirming] = useState(false)
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isDeleteConfirming) {
+      onDelete?.(id)
+      setIsDeleteConfirming(false)
+    } else {
+      setIsDeleteConfirming(true)
+    }
+  }
+
+  const handleDeleteCancel = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setIsDeleteConfirming(false)
+  }
+
   return (
     <div
       className={cn(
@@ -230,10 +554,40 @@ function FileNode({ id, data, selected, onAttachmentContextMenu }: { id: string;
             <Download className="w-5 h-5 text-primary" />
           )}
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="text-sm font-medium truncate">{data.name}</div>
           <div className="text-xs text-muted-foreground capitalize">{data.type}</div>
         </div>
+        {selected && (
+          <div className="flex items-center">
+            {isDeleteConfirming ? (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handleDeleteClick}
+                  className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                  title="确认删除"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={handleDeleteCancel}
+                  className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+                  title="取消"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsDeleteConfirming(true)}
+                className="p-1.5 rounded-lg hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors"
+                title="删除"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
       {data.url && (
         <a
@@ -262,6 +616,7 @@ interface ReactFlowCanvasProps {
   onEdgesChange?: OnEdgesChange<Edge>
   setNodes?: React.Dispatch<React.SetStateAction<Node<CanvasItemData>[]>>
   onAttachmentContextMenu?: (e: React.MouseEvent, attachment: { id: string; url?: string; rawUrl?: string; name: string; type: CanvasItemData['type'] }) => void
+  onNodeDelete?: (id: string) => void
 }
 
 export function ReactFlowCanvas({ 
@@ -271,32 +626,47 @@ export function ReactFlowCanvas({
   onNodesChange, 
   onEdgesChange,
   setNodes,
-  onAttachmentContextMenu
+  onAttachmentContextMenu,
+  onNodeDelete
 }: ReactFlowCanvasProps) {
   const [showContextMenu, setShowContextMenu] = useState(false)
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 })
   const { uploadFile } = useTOSUpload()
   const { screenToFlowPosition, fitView } = useReactFlow()
   const onAttachmentContextMenuRef = useRef(onAttachmentContextMenu)
+  const onNodeDeleteRef = useRef(onNodeDelete)
 
   useEffect(() => {
     onAttachmentContextMenuRef.current = onAttachmentContextMenu
   }, [onAttachmentContextMenu])
+
+  useEffect(() => {
+    onNodeDeleteRef.current = onNodeDelete
+  }, [onNodeDelete])
+
+  const handleDeleteNode = useCallback((id: string) => {
+    if (setNodes) {
+      setNodes((nds) => nds.filter((node) => node.id !== id))
+    }
+    onNodeDeleteRef.current?.(id)
+  }, [setNodes])
 
   const nodeTypes = useMemo(() => ({
     media: (props: any) => (
       <MediaNode
         {...props}
         onAttachmentContextMenu={(e, attachment) => onAttachmentContextMenuRef.current?.(e, attachment)}
+        onDelete={handleDeleteNode}
       />
     ),
     file: (props: any) => (
       <FileNode
         {...props}
         onAttachmentContextMenu={(e, attachment) => onAttachmentContextMenuRef.current?.(e, attachment)}
+        onDelete={handleDeleteNode}
       />
     )
-  }), [])
+  }), [handleDeleteNode])
 
   // File Upload Logic (Context Menu)
   const handleFileUpload = useCallback(async (files: FileList) => {
