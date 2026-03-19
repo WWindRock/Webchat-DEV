@@ -38,7 +38,7 @@ _OutgoingPart = Union[
 class RenderStyle:
     """Channel capabilities for rendering (no hardcoded markdown/emoji)."""
 
-    show_tool_details: bool = True
+    show_tool_details: bool = False  # SECURITY: Never expose tool arguments by default
     supports_markdown: bool = True
     supports_code_fence: bool = True
     use_emoji: bool = True

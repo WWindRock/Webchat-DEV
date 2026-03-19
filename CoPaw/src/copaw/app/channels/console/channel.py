@@ -66,7 +66,7 @@ class ConsoleChannel(BaseChannel):
         enabled: bool,
         bot_prefix: str,
         on_reply_sent: OnReplySent = None,
-        show_tool_details: bool = True,
+        show_tool_details: bool = False,  # SECURITY: Never expose tool arguments
         filter_tool_messages: bool = False,
         filter_thinking: bool = False,
     ):
@@ -112,7 +112,7 @@ class ConsoleChannel(BaseChannel):
         process: ProcessHandler,
         config: ConsoleChannelConfig,
         on_reply_sent: OnReplySent = None,
-        show_tool_details: bool = True,
+        show_tool_details: bool = False,  # SECURITY: Never expose tool arguments
         filter_tool_messages: bool = False,
         filter_thinking: bool = False,
     ) -> "ConsoleChannel":
